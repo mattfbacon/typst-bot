@@ -12,6 +12,7 @@ use crate::FILE_NAME;
 
 const DESIRED_RESOLUTION: f32 = 1000.0;
 const MAX_SIZE: f32 = 10000.0;
+const MAX_PIXELS_PER_POINT: f32 = 5.0;
 
 #[derive(Debug, thiserror::Error)]
 #[error(
@@ -41,7 +42,8 @@ fn determine_pixels_per_point(size: Size) -> Result<f32, TooBig> {
 		})
 	} else {
 		let area = x * y;
-		Ok(DESIRED_RESOLUTION / area.sqrt())
+		let nominal = DESIRED_RESOLUTION / area.sqrt();
+		Ok(nominal.min(MAX_PIXELS_PER_POINT))
 	}
 }
 
