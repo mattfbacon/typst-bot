@@ -11,7 +11,7 @@ use crate::sandbox::Sandbox;
 use crate::FILE_NAME;
 
 const DESIRED_RESOLUTION: f32 = 1000.0;
-const MAX_SIZE: f32 = 1000.0;
+const MAX_SIZE: f32 = 10000.0;
 
 #[derive(Debug, thiserror::Error)]
 #[error(
