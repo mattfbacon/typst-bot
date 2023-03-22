@@ -51,7 +51,7 @@ pub struct SourceErrorsWithSource {
 	errors: Vec<SourceError>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct CharIndex {
 	first_byte: usize,
 	char_index: usize,
@@ -68,25 +68,111 @@ impl std::ops::Add for CharIndex {
 	}
 }
 
-fn byte_index_to_char_index(source: &str, byte_index: usize) -> Option<CharIndex> {
-	source
-		.char_indices()
-		.enumerate()
-		.map(|(char_index, (first_byte, _))| CharIndex {
-			first_byte,
-			char_index,
-		})
-		.find(|idx| idx.first_byte >= byte_index)
-}
+fn byte_index_to_char_index(source: &str, byte_index: usize) -> CharIndex {
+	let mut ret = CharIndex {
+		first_byte: 0,
+		char_index: 0,
+	};
 
-fn byte_span_to_char_span(source: &str, mut span: Range<usize>) -> Option<Range<usize>> {
-	if span.start > span.end {
-		std::mem::swap(&mut span.start, &mut span.end);
+	for ch in source.chars() {
+		if byte_index < ret.first_byte + ch.len_utf8() {
+			break;
+		}
+		ret.char_index += 1;
+		ret.first_byte += ch.len_utf8();
 	}
 
-	let start = byte_index_to_char_index(source, span.start)?;
-	let end = byte_index_to_char_index(&source[start.first_byte..], span.end - span.start)? + start;
+	ret
+}
+
+#[test]
+fn test_byte_index_to_char_index() {
+	assert_eq!(
+		byte_index_to_char_index("abc", 0),
+		CharIndex {
+			first_byte: 0,
+			char_index: 0,
+		},
+	);
+	assert_eq!(
+		byte_index_to_char_index("abc", 1),
+		CharIndex {
+			first_byte: 1,
+			char_index: 1,
+		},
+	);
+	assert_eq!(
+		byte_index_to_char_index("abc", 2),
+		CharIndex {
+			first_byte: 2,
+			char_index: 2,
+		},
+	);
+	assert_eq!(
+		byte_index_to_char_index("abc", 3),
+		CharIndex {
+			first_byte: 3,
+			char_index: 3,
+		},
+	);
+	assert_eq!(
+		byte_index_to_char_index("あか", 0),
+		CharIndex {
+			first_byte: 0,
+			char_index: 0,
+		},
+	);
+	assert_eq!(
+		byte_index_to_char_index("あか", 3),
+		CharIndex {
+			first_byte: 3,
+			char_index: 1,
+		},
+	);
+	assert_eq!(
+		byte_index_to_char_index("あか", 6),
+		CharIndex {
+			first_byte: 6,
+			char_index: 2,
+		},
+	);
+	assert_eq!(
+		byte_index_to_char_index("あか", 2),
+		CharIndex {
+			first_byte: 0,
+			char_index: 0,
+		},
+	);
+	assert_eq!(
+		byte_index_to_char_index("あか", 7),
+		CharIndex {
+			first_byte: 6,
+			char_index: 2,
+		},
+	);
+}
+
+fn byte_span_to_char_span(source: &str, span: Range<usize>) -> Option<Range<usize>> {
+	if span.start > span.end {
+		return None;
+	}
+
+	let start = byte_index_to_char_index(source, span.start);
+	let end = byte_index_to_char_index(&source[start.first_byte..], span.end - span.start) + start;
 	Some(start.char_index..end.char_index)
+}
+
+#[test]
+fn test_byte_span_to_char_span() {
+	#![allow(clippy::reversed_empty_ranges)]
+
+	assert_eq!(byte_span_to_char_span("abc", 0..0), Some(0..0));
+	assert_eq!(byte_span_to_char_span("abc", 1..2), Some(1..2));
+	assert_eq!(byte_span_to_char_span("あか", 0..3), Some(0..1));
+	assert_eq!(byte_span_to_char_span("あか", 3..6), Some(1..2));
+	assert_eq!(byte_span_to_char_span("あか", 3..3), Some(1..1));
+	assert_eq!(byte_span_to_char_span("あか", 2..3), Some(0..0));
+	assert_eq!(byte_span_to_char_span("あか", 6..3), None);
 }
 
 impl std::fmt::Display for SourceErrorsWithSource {
