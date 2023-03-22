@@ -8,7 +8,6 @@ version = "0.1.0"
 ariadne = { version = "0.2", default_features = false }
 bytemuck = "1"
 comemo = { git = "https://github.com/typst/comemo" }
-csscolorparser = "0.6"
 image = { version = "0.24", default_features = false, features = ["png"] }
 flate2 = "1"
 poise = { version = "0.5", default_features = false, features = [

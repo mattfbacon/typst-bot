@@ -1,12 +1,112 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use poise::async_trait;
 use poise::serenity_prelude::{AttachmentType, GatewayIntents};
-use typst::geom::{Color, RgbaColor};
+use typst::geom::RgbaColor;
 
 use crate::sandbox::Sandbox;
-use crate::{PREAMBLE, SOURCE_URL};
+use crate::SOURCE_URL;
+
+#[derive(Debug, thiserror::Error)]
+#[error("Invalid theme")]
+struct InvalidTheme;
+
+impl FromStr for Theme {
+	type Err = InvalidTheme;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		Ok(match s {
+			"transparent" => Self::Transparent,
+			"light" => Self::Light,
+			"dark" => Self::Dark,
+			_ => return Err(InvalidTheme),
+		})
+	}
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+enum Theme {
+	Transparent,
+	Light,
+	#[default]
+	Dark,
+}
+
+impl Theme {
+	const fn preamble(self) -> &'static str {
+		match self {
+			Self::Transparent => "",
+			Self::Light => "#set page(fill: white)\n",
+			Self::Dark => concat!(
+				"#set page(fill: rgb(49, 51, 56))\n",
+				"#set text(fill: rgb(219, 222, 225))\n",
+			),
+		}
+	}
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("Invalid page size")]
+struct InvalidPageSize;
+
+impl FromStr for PageSize {
+	type Err = InvalidPageSize;
+
+	fn from_str(s: &str) -> Result<Self, Self::Err> {
+		Ok(match s {
+			"auto" => Self::Auto,
+			"default" => Self::Default,
+			_ => return Err(InvalidPageSize),
+		})
+	}
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+enum PageSize {
+	#[default]
+	Auto,
+	Default,
+}
+
+impl PageSize {
+	const fn preamble(self) -> &'static str {
+		match self {
+			Self::Auto => "#set page(width: auto, height: auto, margin: 10pt)\n",
+			Self::Default => "",
+		}
+	}
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+struct Preamble {
+	page_size: PageSize,
+	theme: Theme,
+}
+
+impl Preamble {
+	fn preamble(self) -> String {
+		let page_size = self.page_size.preamble();
+		let theme = self.theme.preamble();
+		if theme.is_empty() && page_size.is_empty() {
+			String::new()
+		} else {
+			format!(
+				concat!(
+					"// Begin preamble\n",
+					"// Page size:\n",
+					"{page_size}",
+					"// Theme:\n",
+					"{theme}",
+					"// End preamble\n",
+				),
+				page_size = page_size,
+				theme = theme,
+			)
+		}
+	}
+}
 
 struct Data {
 	sandbox: Arc<Sandbox>,
@@ -15,26 +115,9 @@ struct Data {
 type PoiseError = Box<dyn std::error::Error + Send + Sync + 'static>;
 type Context<'a> = poise::Context<'a, Data, PoiseError>;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct RenderFlags {
-	fill: Color,
-	preamble: bool,
-}
-
-impl Default for RenderFlags {
-	fn default() -> Self {
-		Self {
-			fill: Color::WHITE,
-			preamble: true,
-		}
-	}
-}
-
-fn parse_color(raw: &str) -> Result<Color, impl std::error::Error> {
-	csscolorparser::parse(raw).map(|css| {
-		let [r, g, b, a] = css.to_rgba8();
-		RgbaColor { r, g, b, a }.into()
-	})
+	preamble: Preamble,
 }
 
 #[async_trait]
@@ -50,13 +133,11 @@ impl<'a> poise::PopArgument<'a> for RenderFlags {
 
 			for (key, value) in raw {
 				match key.as_str() {
-					"fill" => {
-						parsed.fill = parse_color(value).map_err(|error| format!("invalid fill: {error}"))?;
+					"theme" => {
+						parsed.preamble.theme = value.parse().map_err(|_| "invalid theme")?;
 					}
-					"preamble" => {
-						parsed.preamble = value
-							.parse()
-							.map_err(|_| "invalid preamble: invalid boolean")?;
+					"pagesize" => {
+						parsed.preamble.page_size = value.parse().map_err(|_| "invalid page size")?;
 					}
 					_ => {
 						return Err(format!("unrecognized flag {key:?}").into());
@@ -77,33 +158,42 @@ impl<'a> poise::PopArgument<'a> for RenderFlags {
 }
 
 fn render_help() -> String {
-	const BRIEF: &str = "Render the given code as an image.";
-	format!("{BRIEF}
+	let default_preamble = Preamble::default().preamble();
 
-{BRIEF}
+	format!(
+		"\
+Render the given code as an image.
 
-Syntax: `?render [fill=<color>] [preamble=<bool>] <code block>`
+Syntax: `?render [pagesize=<page size>] [theme=<theme>] <code block>`
 
 **Flags**
 
-`fill` sets the background color.
-`preamble` determines whether the default preamble is automatically added. For reference, this is the preamble:
+- `pagesize` can be `auto` (default) or `default`.
+
+- `theme` can be `dark` (default), `light`, or `transparent`.
+
+To be clear, the full default preamble is:
 
 ```
-{PREAMBLE}
+{default_preamble}
 ```
+
+To remove the preamble entirely, use `pagesize=default theme=transparent`.
 
 **Examples**
 
 ```
 ?render `hello, world!`
 
-?render fill=black ``‌`
-	#set text(color: white)
-	= Heading!
-	And some text.
+?render pagesize=default theme=light ``‌`
+= Heading!
+
+And some text.
+
+#lorem(100)
 ``‌`
-```")
+```"
+	)
 }
 
 #[poise::command(
@@ -121,12 +211,12 @@ async fn render(
 	let sandbox = Arc::clone(&ctx.data().sandbox);
 
 	let mut source = code.code;
-	if flags.preamble {
-		source.insert_str(0, PREAMBLE);
-	}
+	source.insert_str(0, &flags.preamble.preamble());
 
-	let res =
-		tokio::task::spawn_blocking(move || crate::render::render(sandbox, flags.fill, source)).await?;
+	let res = tokio::task::spawn_blocking(move || {
+		crate::render::render(sandbox, RgbaColor::new(0, 0, 0, 0).into(), source)
+	})
+	.await?;
 
 	match res {
 		Ok(res) => {
