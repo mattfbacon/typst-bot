@@ -129,15 +129,25 @@ async fn render(
 		tokio::task::spawn_blocking(move || crate::render::render(sandbox, flags.fill, source)).await?;
 
 	match res {
-		Ok(image) => {
+		Ok(res) => {
 			ctx
 				.send(|reply| {
 					reply
 						.attachment(AttachmentType::Bytes {
-							data: image.into(),
+							data: res.image.into(),
 							filename: "rendered.png".into(),
 						})
-						.reply(true)
+						.reply(true);
+
+					if let Some(more_pages) = res.more_pages {
+						let more_pages = more_pages.get();
+						reply.content(format!(
+							"Note: {more_pages} more page{s} ignored",
+							s = if more_pages == 1 { "" } else { "s" }
+						));
+					}
+
+					reply
 				})
 				.await?;
 		}

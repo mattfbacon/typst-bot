@@ -1,4 +1,5 @@
 use std::io::Cursor;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use typst::diag::SourceError;
@@ -94,7 +95,12 @@ pub enum Error {
 	NoPages,
 }
 
-pub fn render(sandbox: Arc<Sandbox>, fill: Color, source: String) -> Result<Vec<u8>, Error> {
+pub struct Output {
+	pub image: Vec<u8>,
+	pub more_pages: Option<NonZeroUsize>,
+}
+
+pub fn render(sandbox: Arc<Sandbox>, fill: Color, source: String) -> Result<Output, Error> {
 	let world = sandbox.with_source(source);
 
 	let document = typst::compile(&world).map_err(|errors| SourceErrorsWithSource {
@@ -102,6 +108,7 @@ pub fn render(sandbox: Arc<Sandbox>, fill: Color, source: String) -> Result<Vec<
 		errors: *errors,
 	})?;
 	let frame = &document.pages.get(0).ok_or(Error::NoPages)?;
+	let more_pages = NonZeroUsize::new(document.pages.len().saturating_sub(1));
 
 	let pixels_per_point = determine_pixels_per_point(frame.size())?;
 
@@ -120,5 +127,6 @@ pub fn render(sandbox: Arc<Sandbox>, fill: Color, source: String) -> Result<Vec<
 	)
 	.unwrap();
 
-	Ok(writer.into_inner())
+	let image = writer.into_inner();
+	Ok(Output { image, more_pages })
 }
