@@ -80,7 +80,7 @@ fn byte_index_to_char_index(source: &str, byte_index: usize) -> Option<CharIndex
 }
 
 fn byte_span_to_char_span(source: &str, mut span: Range<usize>) -> Option<Range<usize>> {
-	if span.start < span.end {
+	if span.start > span.end {
 		std::mem::swap(&mut span.start, &mut span.end);
 	}
 
