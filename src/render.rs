@@ -1,5 +1,6 @@
 use std::io::Cursor;
 use std::num::NonZeroUsize;
+use std::ops::Range;
 use std::sync::Arc;
 
 use typst::diag::SourceError;
@@ -37,6 +38,44 @@ pub struct SourceErrorsWithSource {
 	errors: Vec<SourceError>,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct CharIndex {
+	first_byte: usize,
+	char_index: usize,
+}
+
+impl std::ops::Add for CharIndex {
+	type Output = CharIndex;
+
+	fn add(self, other: Self) -> Self {
+		Self {
+			first_byte: self.first_byte + other.first_byte,
+			char_index: self.char_index + other.char_index,
+		}
+	}
+}
+
+fn byte_index_to_char_index(source: &str, byte_index: usize) -> Option<CharIndex> {
+	source
+		.char_indices()
+		.enumerate()
+		.map(|(char_index, (first_byte, _))| CharIndex {
+			first_byte,
+			char_index,
+		})
+		.find(|idx| idx.first_byte >= byte_index)
+}
+
+fn byte_span_to_char_span(source: &str, mut span: Range<usize>) -> Option<Range<usize>> {
+	if span.start < span.end {
+		std::mem::swap(&mut span.start, &mut span.end);
+	}
+
+	let start = byte_index_to_char_index(source, span.start)?;
+	let end = byte_index_to_char_index(&source[start.first_byte..], span.end - span.start)? + start;
+	Some(start.char_index..end.char_index)
+}
+
 impl std::fmt::Display for SourceErrorsWithSource {
 	fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		use ariadne::{Config, Label, Report};
@@ -53,7 +92,8 @@ impl std::fmt::Display for SourceErrorsWithSource {
 			}
 		}
 
-		let mut cache = SourceCache(ariadne::Source::from(self.source.text()));
+		let source_text = self.source.text();
+		let mut cache = SourceCache(ariadne::Source::from(source_text));
 
 		let mut bytes = Vec::new();
 
@@ -66,8 +106,9 @@ impl std::fmt::Display for SourceErrorsWithSource {
 				ErrorPos::Start => span.start..span.start,
 				ErrorPos::End => span.end..span.end,
 			};
+			let span = byte_span_to_char_span(source_text, span).ok_or(std::fmt::Error)?;
 
-			let report = Report::build(ariadne::ReportKind::Error, (), 0)
+			let report = Report::build(ariadne::ReportKind::Error, (), span.start)
 				.with_config(Config::default().with_tab_width(2).with_color(false))
 				.with_message(&error.message)
 				.with_label(Label::new(span))
