@@ -4,7 +4,7 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use typst::diag::SourceError;
-use typst::geom::{Color, Size};
+use typst::geom::{Axis, Color, Size};
 use typst::syntax::{ErrorPos, Source};
 
 use crate::sandbox::Sandbox;
@@ -14,8 +14,13 @@ const DESIRED_RESOLUTION: f32 = 1000.0;
 const MAX_SIZE: f32 = 1000.0;
 
 #[derive(Debug, thiserror::Error)]
-#[error("rendered output was too big")]
-pub struct TooBig;
+#[error(
+	"rendered output was too big: the {axis:?} axis was {size} pt but the maximum is {MAX_SIZE}"
+)]
+pub struct TooBig {
+	size: f32,
+	axis: Axis,
+}
 
 fn determine_pixels_per_point(size: Size) -> Result<f32, TooBig> {
 	// We want to truncate.
@@ -24,8 +29,16 @@ fn determine_pixels_per_point(size: Size) -> Result<f32, TooBig> {
 	let x = size.x.to_pt() as f32;
 	let y = size.y.to_pt() as f32;
 
-	if x > MAX_SIZE || y > MAX_SIZE {
-		Err(TooBig)
+	if x > MAX_SIZE {
+		Err(TooBig {
+			size: x,
+			axis: Axis::X,
+		})
+	} else if y > MAX_SIZE {
+		Err(TooBig {
+			size: y,
+			axis: Axis::Y,
+		})
 	} else {
 		let area = x * y;
 		Ok(DESIRED_RESOLUTION / area.sqrt())
