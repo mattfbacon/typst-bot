@@ -10,7 +10,6 @@ use crate::FILE_NAME;
 
 const DESIRED_RESOLUTION: f32 = 1000.0;
 const MAX_SIZE: f32 = 1000.0;
-const PREAMBLE: &str = "// Preamble\n#set page(width: auto, height: auto)\n// End preamble\n\n";
 
 #[derive(Debug, thiserror::Error)]
 #[error("rendered output was too big")]
@@ -95,9 +94,7 @@ pub enum Error {
 	NoPages,
 }
 
-pub fn render(sandbox: Arc<Sandbox>, fill: Color, mut source: String) -> Result<Vec<u8>, Error> {
-	source.insert_str(0, PREAMBLE);
-
+pub fn render(sandbox: Arc<Sandbox>, fill: Color, source: String) -> Result<Vec<u8>, Error> {
 	let world = sandbox.with_source(source);
 
 	let document = typst::compile(&world).map_err(|errors| SourceErrorsWithSource {

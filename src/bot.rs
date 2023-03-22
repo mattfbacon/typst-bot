@@ -6,7 +6,7 @@ use poise::serenity_prelude::{AttachmentType, GatewayIntents};
 use typst::geom::{Color, RgbaColor};
 
 use crate::sandbox::Sandbox;
-use crate::SOURCE_URL;
+use crate::{PREAMBLE, SOURCE_URL};
 
 struct Data {
 	sandbox: Arc<Sandbox>,
@@ -18,11 +18,15 @@ type Context<'a> = poise::Context<'a, Data, PoiseError>;
 #[derive(Debug)]
 struct RenderFlags {
 	fill: Color,
+	preamble: bool,
 }
 
 impl Default for RenderFlags {
 	fn default() -> Self {
-		Self { fill: Color::WHITE }
+		Self {
+			fill: Color::WHITE,
+			preamble: true,
+		}
 	}
 }
 
@@ -49,6 +53,11 @@ impl<'a> poise::PopArgument<'a> for RenderFlags {
 					"fill" => {
 						parsed.fill = parse_color(value).map_err(|error| format!("invalid fill: {error}"))?;
 					}
+					"preamble" => {
+						parsed.preamble = value
+							.parse()
+							.map_err(|_| "invalid preamble: invalid boolean")?;
+					}
 					_ => {
 						return Err(format!("unrecognized flag {key:?}").into());
 					}
@@ -67,24 +76,43 @@ impl<'a> poise::PopArgument<'a> for RenderFlags {
 	}
 }
 
-/// Render the given code as an image.
-///
-/// Render the given code as an image.
-///
-/// Syntax: `?render [fill=<color>] <code block>`
-///
-/// **Examples**
-///
-/// ```
-/// ?render `hello, world!`
-///
-/// ?render fill=black ``‌`
-/// 	#set text(color: white)
-/// 	= Heading!
-/// 	And some text.
-/// ``‌`
-/// ```
-#[poise::command(prefix_command, track_edits, broadcast_typing, user_cooldown = 1)]
+fn render_help() -> String {
+	const BRIEF: &str = "Render the given code as an image.";
+	format!("{BRIEF}
+
+{BRIEF}
+
+Syntax: `?render [fill=<color>] [preamble=<bool>] <code block>`
+
+**Flags**
+
+`fill` sets the background color.
+`preamble` determines whether the default preamble is automatically added. For reference, this is the preamble:
+
+```
+{PREAMBLE}
+```
+
+**Examples**
+
+```
+?render `hello, world!`
+
+?render fill=black ``‌`
+	#set text(color: white)
+	= Heading!
+	And some text.
+``‌`
+```")
+}
+
+#[poise::command(
+	prefix_command,
+	track_edits,
+	broadcast_typing,
+	user_cooldown = 1,
+	help_text_fn = "render_help"
+)]
 async fn render(
 	ctx: Context<'_>,
 	#[description = "Flags"] flags: RenderFlags,
@@ -92,9 +120,13 @@ async fn render(
 ) -> Result<(), PoiseError> {
 	let sandbox = Arc::clone(&ctx.data().sandbox);
 
+	let mut source = code.code;
+	if flags.preamble {
+		source.insert_str(0, PREAMBLE);
+	}
+
 	let res =
-		tokio::task::spawn_blocking(move || crate::render::render(sandbox, flags.fill, code.code))
-			.await?;
+		tokio::task::spawn_blocking(move || crate::render::render(sandbox, flags.fill, source)).await?;
 
 	match res {
 		Ok(image) => {

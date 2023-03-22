@@ -22,6 +22,7 @@ mod sandbox;
 
 const FILE_NAME: &str = "<user input>";
 const SOURCE_URL: &str = "https://github.com/mattfbacon/typst-bot";
+const PREAMBLE: &str = "// Preamble\n#set page(width: auto, height: auto)\n// End preamble\n\n";
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
