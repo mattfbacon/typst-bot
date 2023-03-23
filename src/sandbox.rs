@@ -1,4 +1,3 @@
-use std::io::Read as _;
 use std::sync::Arc;
 
 use comemo::Prehashed;
@@ -17,27 +16,15 @@ pub struct Sandbox {
 }
 
 fn fonts() -> Vec<Font> {
-	[
-		include_bytes!("../fonts/LinLibertine_R.ttf.deflate") as &[u8],
-		include_bytes!("../fonts/LinLibertine_RB.ttf.deflate"),
-		include_bytes!("../fonts/LinLibertine_RBI.ttf.deflate"),
-		include_bytes!("../fonts/LinLibertine_RI.ttf.deflate"),
-		include_bytes!("../fonts/NewCMMath-Book.otf.deflate"),
-		include_bytes!("../fonts/NewCMMath-Regular.otf.deflate"),
-		include_bytes!("../fonts/DejaVuSansMono.ttf.deflate"),
-		include_bytes!("../fonts/DejaVuSansMono-Bold.ttf.deflate"),
-		include_bytes!("../fonts/TwitterColorEmoji.ttf.deflate"),
-	]
-	.into_iter()
-	.flat_map(|compressed| {
-		let mut bytes = Vec::new();
-		flate2::bufread::ZlibDecoder::new(compressed)
-			.read_to_end(&mut bytes)
-			.unwrap();
-		let buffer = Buffer::from(bytes);
-		Font::iter(buffer)
-	})
-	.collect()
+	std::fs::read_dir("fonts")
+		.unwrap()
+		.map(Result::unwrap)
+		.flat_map(|entry| {
+			let bytes = std::fs::read(entry.path()).unwrap();
+			let buffer = Buffer::from(bytes);
+			Font::iter(buffer)
+		})
+		.collect()
 }
 
 fn make_source(source: String) -> Source {
