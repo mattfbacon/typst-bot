@@ -204,6 +204,15 @@ And some text.
 	)
 }
 
+fn panic_to_string(panic: &dyn std::any::Any) -> String {
+	let inner = panic
+		.downcast_ref::<&'static str>()
+		.copied()
+		.or_else(|| panic.downcast_ref::<String>().map(String::as_str))
+		.unwrap_or("Box<dyn Any>");
+	format!("panicked at '{inner}'")
+}
+
 #[poise::command(
 	prefix_command,
 	track_edits,
@@ -224,10 +233,23 @@ async fn render(
 	let res = tokio::task::spawn_blocking(move || {
 		crate::render::render(sandbox, RgbaColor::new(0, 0, 0, 0).into(), source)
 	})
-	.await?;
+	.await;
+
+	macro_rules! on_error {
+		($error:expr) => {{
+			let error = sanitize_code_block(&$error);
+			ctx
+				.send(|reply| {
+					reply
+						.content(format!("An error occurred:\n```\n{error}```"))
+						.reply(true)
+				})
+				.await?;
+		}};
+	}
 
 	match res {
-		Ok(res) => {
+		Ok(Ok(res)) => {
 			ctx
 				.send(|reply| {
 					reply
@@ -249,16 +271,9 @@ async fn render(
 				})
 				.await?;
 		}
-		Err(error) => {
-			ctx
-				.send(|reply| {
-					let error = sanitize_code_block(&error.to_string());
-					reply
-						.content(format!("An error occurred:\n```typst\n{error}```"))
-						.reply(true)
-				})
-				.await?;
-		}
+		Ok(Err(error)) => on_error!(error.to_string()),
+		// note `&*` to coerce the Box<dyn Any> to &dyn Any with proper type.
+		Err(error) => on_error!(panic_to_string(&*error.try_into_panic()?)),
 	}
 
 	Ok(())
