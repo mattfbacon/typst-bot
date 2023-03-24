@@ -9,6 +9,14 @@ use typst::geom::RgbaColor;
 use crate::sandbox::Sandbox;
 use crate::SOURCE_URL;
 
+/// Prevent garbled output from codeblocks unwittingly terminated by their own content.
+///
+/// U+200C is a zero-width non-joiner.
+/// It prevents the triple backtick from being interpreted as a codeblock but retains ligature support.
+fn sanitize_code_block(raw: &str) -> String {
+	raw.replace("```", "``\u{200c}`")
+}
+
 #[derive(Debug, thiserror::Error)]
 #[error("Invalid theme")]
 struct InvalidTheme;
@@ -244,8 +252,7 @@ async fn render(
 		Err(error) => {
 			ctx
 				.send(|reply| {
-					// U+200C is a zero-width non-joiner. It prevents the triple backtick from being interpreted as a codeblock but retains ligature support.
-					let error = error.to_string().replace("```", "``\u{200c}`");
+					let error = sanitize_code_block(&error.to_string());
 					reply
 						.content(format!("An error occurred:\n```typst\n{error}```"))
 						.reply(true)
@@ -285,6 +292,37 @@ async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
 	Ok(())
 }
 
+/// Get the AST for the given code.
+///
+/// Syntax: `?ast <code block>`
+///
+/// **Examples**
+///
+/// ```
+/// ?ast `hello, world!`
+///
+/// ?ast ``‌`
+/// = Heading!
+///
+/// And some text.
+///
+/// #lorem(100)
+/// ``‌`
+/// ```
+#[poise::command(prefix_command, track_edits, broadcast_typing)]
+async fn ast(
+	ctx: Context<'_>,
+	#[description = "Code to parse"] code: poise::prefix_argument::CodeBlock,
+) -> Result<(), PoiseError> {
+	let ast = typst::syntax::parse(&code.code);
+	let ast = sanitize_code_block(&format!("{ast:#?}"));
+	let ast = format!("```{ast}```");
+
+	ctx.send(|reply| reply.content(ast).reply(true)).await?;
+
+	Ok(())
+}
+
 pub async fn run() {
 	let sandbox = Arc::new(Sandbox::new());
 
@@ -299,7 +337,7 @@ pub async fn run() {
 				edit_tracker: Some(poise::EditTracker::for_timespan(edit_tracker_time)),
 				..Default::default()
 			},
-			commands: vec![render(), help(), source()],
+			commands: vec![render(), help(), source(), ast()],
 			..Default::default()
 		})
 		.token(std::env::var("DISCORD_TOKEN").expect("need `DISCORD_TOKEN` env var"))
