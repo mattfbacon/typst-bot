@@ -198,7 +198,11 @@ impl std::fmt::Display for SourceErrorsWithSource {
 
 		let mut bytes = Vec::new();
 
-		for error in &self.errors {
+		for error in self
+			.errors
+			.iter()
+			.filter(|error| error.span.source() == self.source.id())
+		{
 			bytes.clear();
 
 			let span = self.source.range(error.span);
