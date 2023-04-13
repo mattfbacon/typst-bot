@@ -231,6 +231,7 @@ async fn render(
 	source.insert_str(0, &flags.preamble.preamble());
 
 	let res = tokio::task::spawn_blocking(move || {
+		comemo::evict(100);
 		crate::render::render(sandbox, RgbaColor::new(0, 0, 0, 0).into(), source)
 	})
 	.await;
