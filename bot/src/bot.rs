@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
 
 use poise::async_trait;
 use poise::serenity_prelude::{AttachmentType, GatewayIntents};
-use typst::geom::RgbaColor;
 
-use crate::sandbox::Sandbox;
+use crate::worker::Worker;
 use crate::SOURCE_URL;
 
 /// Prevent garbled output from codeblocks unwittingly terminated by their own content.
@@ -117,7 +115,7 @@ impl Preamble {
 }
 
 struct Data {
-	sandbox: Arc<Sandbox>,
+	pool: Worker,
 }
 
 type PoiseError = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -204,15 +202,6 @@ And some text.
 	)
 }
 
-fn panic_to_string(panic: &dyn std::any::Any) -> String {
-	let inner = panic
-		.downcast_ref::<&'static str>()
-		.copied()
-		.or_else(|| panic.downcast_ref::<String>().map(String::as_str))
-		.unwrap_or("Box<dyn Any>");
-	format!("panicked at '{inner}'")
-}
-
 #[poise::command(
 	prefix_command,
 	track_edits,
@@ -225,32 +214,15 @@ async fn render(
 	#[description = "Flags"] flags: RenderFlags,
 	#[description = "Code to render"] code: poise::prefix_argument::CodeBlock,
 ) -> Result<(), PoiseError> {
-	let sandbox = Arc::clone(&ctx.data().sandbox);
+	let pool = &ctx.data().pool;
 
 	let mut source = code.code;
 	source.insert_str(0, &flags.preamble.preamble());
 
-	let res = tokio::task::spawn_blocking(move || {
-		comemo::evict(100);
-		crate::render::render(sandbox, RgbaColor::new(0, 0, 0, 0).into(), source)
-	})
-	.await;
-
-	macro_rules! on_error {
-		($error:expr) => {{
-			let error = sanitize_code_block(&$error);
-			ctx
-				.send(|reply| {
-					reply
-						.content(format!("An error occurred:\n```\n{error}```"))
-						.reply(true)
-				})
-				.await?;
-		}};
-	}
+	let res = pool.render(source).await;
 
 	match res {
-		Ok(Ok(res)) => {
+		Ok(res) => {
 			ctx
 				.send(|reply| {
 					reply
@@ -272,9 +244,16 @@ async fn render(
 				})
 				.await?;
 		}
-		Ok(Err(error)) => on_error!(error.to_string()),
-		// note `&*` to coerce the Box<dyn Any> to &dyn Any with proper type.
-		Err(error) => on_error!(panic_to_string(&*error.try_into_panic()?)),
+		Err(error) => {
+			let error = sanitize_code_block(&error);
+			ctx
+				.send(|reply| {
+					reply
+						.content(format!("An error occurred:\n```\n{error}```"))
+						.reply(true)
+				})
+				.await?;
+		}
 	}
 
 	Ok(())
@@ -340,9 +319,7 @@ async fn ast(
 }
 
 pub async fn run() {
-	let sandbox = Arc::new(Sandbox::new());
-
-	eprintln!("ready");
+	let pool = Worker::spawn();
 
 	let edit_tracker_time = std::time::Duration::from_secs(3600);
 
@@ -361,9 +338,11 @@ pub async fn run() {
 		.setup(|ctx, _ready, framework| {
 			Box::pin(async move {
 				poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-				Ok(Data { sandbox })
+				Ok(Data { pool })
 			})
 		});
+
+	eprintln!("ready");
 
 	framework.run().await.unwrap();
 }

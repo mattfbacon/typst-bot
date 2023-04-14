@@ -3,8 +3,9 @@ use std::num::NonZeroUsize;
 use std::ops::Range;
 use std::sync::Arc;
 
+use protocol::Output;
 use typst::diag::SourceError;
-use typst::geom::{Axis, Color, Size};
+use typst::geom::{Axis, RgbaColor, Size};
 use typst::syntax::{ErrorPos, Source};
 
 use crate::sandbox::Sandbox;
@@ -241,12 +242,7 @@ pub enum Error {
 	NoPages,
 }
 
-pub struct Output {
-	pub image: Vec<u8>,
-	pub more_pages: Option<NonZeroUsize>,
-}
-
-pub fn render(sandbox: Arc<Sandbox>, fill: Color, source: String) -> Result<Output, Error> {
+pub fn render(sandbox: Arc<Sandbox>, source: String) -> Result<Output, Error> {
 	let world = sandbox.with_source(source);
 
 	let document = typst::compile(&world).map_err(|errors| SourceErrorsWithSource {
@@ -258,7 +254,7 @@ pub fn render(sandbox: Arc<Sandbox>, fill: Color, source: String) -> Result<Outp
 
 	let pixels_per_point = determine_pixels_per_point(frame.size())?;
 
-	let pixmap = typst::export::render(frame, pixels_per_point, fill);
+	let pixmap = typst::export::render(frame, pixels_per_point, RgbaColor::new(0, 0, 0, 0).into());
 
 	let mut writer = Cursor::new(Vec::new());
 
