@@ -17,10 +17,8 @@
 #![forbid(unsafe_code)]
 
 mod bot;
-mod render;
-mod sandbox;
+mod worker;
 
-const FILE_NAME: &str = "<user input>";
 const SOURCE_URL: &str = "https://github.com/mattfbacon/typst-bot";
 
 #[tokio::main(flavor = "current_thread")]

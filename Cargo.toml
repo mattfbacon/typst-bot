@@ -1,26 +1,6 @@
-[package]
-edition = "2021"
-name = "typst-bot"
-resolver = "2"
-version = "0.1.0"
-
-[dependencies]
-ariadne = { version = "0.2", default_features = false }
-bytemuck = "1"
-comemo = "0.2"
-image = { version = "0.24", default_features = false, features = ["png"] }
-flate2 = "1"
-poise = { version = "0.5", default_features = false, features = [
-	"cache",
-	"time",
-] }
-serenity = { version = "0.11", default_features = false, features = [
-	"rustls_backend",
-] }
-thiserror = "1"
-tokio = { version = "1", features = ["rt", "macros"] }
-typst = { git = "https://github.com/typst/typst" }
-typst-library = { git = "https://github.com/typst/typst" }
+[workspace]
+members = ["bot", "protocol", "worker"]
+default-members = ["bot"]
 
 [profile.release]
 lto = "thin"
