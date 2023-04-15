@@ -22,14 +22,10 @@ fn panic_to_string(panic: &dyn std::any::Any) -> String {
 fn main() {
 	let sandbox = Arc::new(Sandbox::new());
 
-	eprintln!("worker starts");
-
 	let mut stdin = std::io::stdin().lock();
 	let mut stdout = std::io::stdout().lock();
 	loop {
 		let res = bincode::deserialize_from(&mut stdin);
-
-		eprintln!("worker receives");
 
 		if let Err(error) = &res {
 			if let bincode::ErrorKind::Io(error) = &**error {
@@ -48,8 +44,6 @@ fn main() {
 		let response = response
 			.map_err(|panic| panic_to_string(&*panic))
 			.and_then(|inner| inner.map_err(|error| error.to_string()));
-
-		eprintln!("worker sends");
 
 		bincode::serialize_into(&mut stdout, &response).unwrap();
 		stdout.flush().unwrap();
