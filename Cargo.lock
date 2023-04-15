@@ -1892,7 +1892,7 @@ checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
 [[package]]
 name = "typst"
 version = "0.2.0"
-source = "git+https://github.com/typst/typst#e5f942172db4c67af300c4ea13cff8786276ca57"
+source = "git+https://github.com/typst/typst#261b96da68890dd1054efb76a72ee997cb779bae"
 dependencies = [
  "bitflags",
  "bytemuck",
@@ -1944,7 +1944,7 @@ dependencies = [
 [[package]]
 name = "typst-library"
 version = "0.2.0"
-source = "git+https://github.com/typst/typst#e5f942172db4c67af300c4ea13cff8786276ca57"
+source = "git+https://github.com/typst/typst#261b96da68890dd1054efb76a72ee997cb779bae"
 dependencies = [
  "chinese-number",
  "comemo",
@@ -1975,7 +1975,7 @@ dependencies = [
 [[package]]
 name = "typst-macros"
 version = "0.2.0"
-source = "git+https://github.com/typst/typst#e5f942172db4c67af300c4ea13cff8786276ca57"
+source = "git+https://github.com/typst/typst#261b96da68890dd1054efb76a72ee997cb779bae"
 dependencies = [
  "heck",
  "proc-macro2",
