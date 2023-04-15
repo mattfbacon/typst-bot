@@ -2,6 +2,8 @@ use std::io::Write as _;
 use std::panic::AssertUnwindSafe;
 use std::sync::Arc;
 
+use protocol::{Request, Response};
+
 use crate::render::render;
 use crate::sandbox::Sandbox;
 
@@ -35,15 +37,24 @@ fn main() {
 			}
 		}
 
-		let request: protocol::Request = res.unwrap();
+		let request: Request = res.unwrap();
+
+		let response = match request {
+			Request::Render { code } => {
+				let sandbox = Arc::clone(&sandbox);
+				let response = std::panic::catch_unwind(AssertUnwindSafe(move || render(sandbox, code)));
+				let response = response
+					.map_err(|panic| panic_to_string(&*panic))
+					.and_then(|inner| inner.map_err(|error| error.to_string()));
+				Response::Render(response)
+			}
+			Request::Ast { code } => {
+				let ast = typst::syntax::parse(&code);
+				Response::Ast(format!("{ast:#?}"))
+			}
+		};
 
 		comemo::evict(100);
-
-		let sandbox = Arc::clone(&sandbox);
-		let response = std::panic::catch_unwind(AssertUnwindSafe(move || render(sandbox, request)));
-		let response = response
-			.map_err(|panic| panic_to_string(&*panic))
-			.and_then(|inner| inner.map_err(|error| error.to_string()));
 
 		bincode::serialize_into(&mut stdout, &response).unwrap();
 		stdout.flush().unwrap();

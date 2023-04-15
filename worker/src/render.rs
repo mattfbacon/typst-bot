@@ -3,7 +3,7 @@ use std::num::NonZeroUsize;
 use std::ops::Range;
 use std::sync::Arc;
 
-use protocol::Output;
+use protocol::Rendered;
 use typst::diag::SourceError;
 use typst::geom::{Axis, RgbaColor, Size};
 use typst::syntax::{ErrorPos, Source};
@@ -242,7 +242,7 @@ pub enum Error {
 	NoPages,
 }
 
-pub fn render(sandbox: Arc<Sandbox>, source: String) -> Result<Output, Error> {
+pub fn render(sandbox: Arc<Sandbox>, source: String) -> Result<Rendered, Error> {
 	let world = sandbox.with_source(source);
 
 	let document = typst::compile(&world).map_err(|errors| SourceErrorsWithSource {
@@ -270,5 +270,5 @@ pub fn render(sandbox: Arc<Sandbox>, source: String) -> Result<Output, Error> {
 	.unwrap();
 
 	let image = writer.into_inner();
-	Ok(Output { image, more_pages })
+	Ok(Rendered { image, more_pages })
 }

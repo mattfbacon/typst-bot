@@ -287,6 +287,53 @@ async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
 	Ok(())
 }
 
+/// Get the AST for the given code.
+///
+/// Syntax: `?ast <code block>`
+///
+/// **Examples**
+///
+/// ```
+/// ?ast `hello, world!`
+///
+/// ?ast ``‌`
+/// = Heading!
+///
+/// And some text.
+///
+/// #lorem(100)
+/// ``‌`
+/// ```
+#[poise::command(prefix_command, track_edits, broadcast_typing)]
+async fn ast(
+	ctx: Context<'_>,
+	#[description = "Code to parse"] code: poise::prefix_argument::CodeBlock,
+) -> Result<(), PoiseError> {
+	let pool = &ctx.data().pool;
+
+	let res = pool.ast(code.code).await;
+
+	match res {
+		Ok(ast) => {
+			let ast = sanitize_code_block(&ast);
+			let ast = format!("```{ast}```");
+
+			ctx.send(|reply| reply.content(ast).reply(true)).await?;
+		}
+		Err(error) => {
+			ctx
+				.send(|reply| {
+					reply
+						.content(format!("An error occurred:\n```\n{error}```"))
+						.reply(true)
+				})
+				.await?;
+		}
+	}
+
+	Ok(())
+}
+
 pub async fn run() {
 	let pool = Worker::spawn();
 
@@ -299,7 +346,7 @@ pub async fn run() {
 				edit_tracker: Some(poise::EditTracker::for_timespan(edit_tracker_time)),
 				..Default::default()
 			},
-			commands: vec![render(), help(), source()],
+			commands: vec![render(), help(), source(), ast()],
 			..Default::default()
 		})
 		.token(std::env::var("DISCORD_TOKEN").expect("need `DISCORD_TOKEN` env var"))

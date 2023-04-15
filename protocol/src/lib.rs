@@ -2,12 +2,24 @@ use std::num::NonZeroUsize;
 
 use serde::{Deserialize, Serialize};
 
-pub type Request = String;
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Request {
+	Render { code: String },
+	Ast { code: String },
+}
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Output {
+pub struct Rendered {
 	pub image: Vec<u8>,
 	pub more_pages: Option<NonZeroUsize>,
 }
 
-pub type Response = Result<Output, String>;
+pub type RenderResponse = Result<Rendered, String>;
+
+pub type AstResponse = String;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Response {
+	Render(RenderResponse),
+	Ast(AstResponse),
+}
