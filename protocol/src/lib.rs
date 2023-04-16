@@ -2,7 +2,7 @@ use std::num::NonZeroUsize;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Request {
 	Render { code: String },
 	Ast { code: String },

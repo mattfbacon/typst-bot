@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use poise::async_trait;
 use poise::serenity_prelude::{AttachmentType, GatewayIntents};
+use tokio::sync::Mutex;
 
 use crate::worker::Worker;
 use crate::SOURCE_URL;
@@ -115,7 +116,7 @@ impl Preamble {
 }
 
 struct Data {
-	pool: Worker,
+	pool: Mutex<Worker>,
 }
 
 type PoiseError = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -219,7 +220,7 @@ async fn render(
 	let mut source = code.code;
 	source.insert_str(0, &flags.preamble.preamble());
 
-	let res = pool.render(source).await;
+	let res = pool.lock().await.render(source).await;
 
 	match res {
 		Ok(res) => {
@@ -245,7 +246,7 @@ async fn render(
 				.await?;
 		}
 		Err(error) => {
-			let error = sanitize_code_block(&error);
+			let error = sanitize_code_block(&format!("{error:?}"));
 			ctx
 				.send(|reply| {
 					reply
@@ -311,7 +312,7 @@ async fn ast(
 ) -> Result<(), PoiseError> {
 	let pool = &ctx.data().pool;
 
-	let res = pool.ast(code.code).await;
+	let res = pool.lock().await.ast(code.code).await;
 
 	match res {
 		Ok(ast) => {
@@ -335,7 +336,7 @@ async fn ast(
 }
 
 pub async fn run() {
-	let pool = Worker::spawn();
+	let pool = Worker::spawn().unwrap();
 
 	let edit_tracker_time = std::time::Duration::from_secs(3600);
 
@@ -354,7 +355,9 @@ pub async fn run() {
 		.setup(|ctx, _ready, framework| {
 			Box::pin(async move {
 				poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-				Ok(Data { pool })
+				Ok(Data {
+					pool: Mutex::new(pool),
+				})
 			})
 		});
 

@@ -1,86 +1,96 @@
-use std::io::ErrorKind;
 use std::process::{Child, ChildStdin, ChildStdout, Stdio};
 use std::time::Duration;
 
+use anyhow::{anyhow, Context as _};
 use protocol::{Request, Response};
-use tokio::sync::{mpsc, oneshot};
-
-#[derive(Debug)]
-struct Command {
-	response: oneshot::Sender<Result<Response, String>>,
-	request: Request,
-}
 
 #[derive(Debug)]
 pub struct Worker {
-	send: mpsc::Sender<Command>,
+	process: Process,
 }
 
 impl Worker {
-	pub fn spawn() -> Self {
-		let (send, recv) = mpsc::channel(8);
-		tokio::task::spawn(in_thread(recv));
-		Self { send }
+	pub fn spawn() -> anyhow::Result<Self> {
+		Ok(Self {
+			process: Process::spawn()?,
+		})
 	}
 
-	async fn run(&self, request: Request) -> Result<Response, String> {
-		let (send_ret, recv_ret) = oneshot::channel();
-		self
-			.send
-			.send(Command {
-				response: send_ret,
-				request,
-			})
-			.await
-			.unwrap();
-		recv_ret.await.unwrap()
+	async fn run(&mut self, request: Request) -> anyhow::Result<Response> {
+		let timeout = Duration::from_secs(1);
+		let mut tries_left = 2;
+
+		loop {
+			let res = tokio::time::timeout(timeout, self.process.communicate(request.clone())).await;
+
+			let error = match res {
+				Ok(res @ Ok(..)) => break res,
+				Ok(Err(error)) => {
+					self.process.replace().await?;
+					error
+				}
+				Err(_timeout) => {
+					self.process.replace().await?;
+					break Err(anyhow!("timeout"));
+				}
+			};
+
+			tries_left -= 1;
+			if tries_left == 0 {
+				break Err(error);
+			}
+		}
 	}
 
-	pub async fn render(&self, code: String) -> protocol::RenderResponse {
+	pub async fn render(&mut self, code: String) -> anyhow::Result<protocol::Rendered> {
 		let response = self.run(Request::Render { code }).await;
 		let Response::Render(response) = response? else { unreachable!() };
 		response
+			.map_err(|error| anyhow!(error))
+			.context("error from worker")
 	}
 
-	pub async fn ast(&self, code: String) -> Result<protocol::AstResponse, String> {
+	pub async fn ast(&mut self, code: String) -> anyhow::Result<protocol::AstResponse> {
 		let response = self.run(Request::Ast { code }).await;
 		let Response::Ast(response) = response? else { unreachable!() };
 		Ok(response)
 	}
 }
 
+#[derive(Debug)]
 struct Process {
 	child: Child,
 	io: Option<(ChildStdin, ChildStdout)>,
 }
 
 impl Process {
-	fn spawn() -> Self {
+	fn spawn() -> anyhow::Result<Self> {
 		let mut child = std::process::Command::new("./worker")
 			.stdin(Stdio::piped())
 			.stdout(Stdio::piped())
 			.spawn()
-			.unwrap();
+			.context("spawning worker process.\n\nthis is likely because you are trying to run the bot from a checkout of the repo and `worker` is a directory. you can fix this by changing the path to the worker binary to point to the worker binary in the cargo target directory.")?;
 		let stdin = child.stdin.take().unwrap();
 		let stdout = child.stdout.take().unwrap();
-		Self {
+		Ok(Self {
 			io: Some((stdin, stdout)),
 			child,
-		}
+		})
 	}
 
-	async fn replace(&mut self) {
-		let new = Self::spawn();
+	async fn replace(&mut self) -> anyhow::Result<()> {
+		let new = Self::spawn()?;
 		let mut old = std::mem::replace(self, new);
 		tokio::task::spawn_blocking(move || {
 			_ = old.child.kill();
 			_ = old.child.wait();
 		})
 		.await
-		.unwrap();
+		.context("joining kill task")?;
+		Ok(())
 	}
 
-	async fn communicate(&mut self, request: Request) -> std::io::Result<Response> {
+	async fn communicate(&mut self, request: Request) -> anyhow::Result<Response> {
 		let (mut stdin, mut stdout) = self.io.take().unwrap();
 		let (stdin, stdout, res) = tokio::task::spawn_blocking(move || {
 			fn inner(
@@ -95,30 +105,8 @@ impl Process {
 			(stdin, stdout, res)
 		})
 		.await
-		.unwrap();
+		.context("joining communication task")?;
 		self.io = Some((stdin, stdout));
-		res.map_err(|error| match *error {
-			bincode::ErrorKind::Io(io) => io,
-			_ => ErrorKind::InvalidData.into(),
-		})
-	}
-}
-
-async fn in_thread(mut recv: mpsc::Receiver<Command>) {
-	let timeout = Duration::from_secs(1);
-
-	let mut process = Process::spawn();
-
-	while let Some(command) = recv.recv().await {
-		let res = tokio::time::timeout(timeout, process.communicate(command.request)).await;
-		let response = match res {
-			Err(_timeout) => {
-				process.replace().await;
-				Err("timeout".into())
-			}
-			Ok(Err(io)) => Err(io.to_string()),
-			Ok(Ok(response)) => Ok(response),
-		};
-		_ = command.response.send(response);
+		res.context("communicating with worker")
 	}
 }

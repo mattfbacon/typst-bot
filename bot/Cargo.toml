@@ -4,6 +4,7 @@ name = "typst-bot"
 version = "0.1.0"
 
 [dependencies]
+anyhow = "1"
 bincode = "1"
 flate2 = "1"
 poise = { version = "0.5", default_features = false, features = [
