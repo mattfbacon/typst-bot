@@ -6,9 +6,12 @@ Built with poise so it has all the goodies like edit tracking, typing status, an
 
 ## Hosting
 
-To set up, copy the built binary and the `fonts` directory from the repo into a directory which will be the bot's working directory.
+To set up, create a directory with the following items:
 
-To run, enter the bot's working directory, set `DISCORD_TOKEN` to your bot token, and run the binary.
+- `fonts`: Copied from the repo. Make sure you have Git LFS set up so the fonts are downloaded properly.
+- `worker`: the worker binary, copied from the target directory after building.
+
+To run, enter the bot's working directory, set `DISCORD_TOKEN` to your bot token, and run the bot binary.
 
 ## License
 
