@@ -17,7 +17,7 @@ impl Worker {
 	}
 
 	async fn run(&mut self, request: Request) -> anyhow::Result<Response> {
-		let timeout = Duration::from_secs(1);
+		let timeout = Duration::from_secs(5);
 		let mut tries_left = 2;
 
 		loop {
