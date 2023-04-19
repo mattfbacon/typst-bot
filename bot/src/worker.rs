@@ -45,9 +45,7 @@ impl Worker {
 	pub async fn render(&mut self, code: String) -> anyhow::Result<protocol::Rendered> {
 		let response = self.run(Request::Render { code }).await;
 		let Response::Render(response) = response? else { unreachable!() };
-		response
-			.map_err(|error| anyhow!(error))
-			.context("error from worker")
+		response.map_err(|error| anyhow!(error))
 	}
 
 	pub async fn ast(&mut self, code: String) -> anyhow::Result<protocol::AstResponse> {
