@@ -67,7 +67,7 @@ impl Process {
 			.stdin(Stdio::piped())
 			.stdout(Stdio::piped())
 			.spawn()
-			.context("spawning worker process.\n\nthis is likely because you are trying to run the bot from a checkout of the repo and `worker` is a directory. you can fix this by changing the path to the worker binary to point to the worker binary in the cargo target directory.")?;
+			.context("spawning worker process.\n\nthis is likely because you are trying to run the bot from a checkout of the repo and `worker` is a directory. you can fix this by changing the path to the worker binary to point to the worker binary in the cargo target directory. alternatively, follow the instructions in the README that describe how to set up a standalone installation.")?;
 		let stdin = child.stdin.take().unwrap();
 		let stdout = child.stdout.take().unwrap();
 		Ok(Self {
