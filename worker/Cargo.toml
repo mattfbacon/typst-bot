@@ -7,7 +7,7 @@ version = "0.1.0"
 ariadne = { version = "0.2", default_features = false }
 bincode = "1"
 bytemuck = "1"
-comemo = "0.2"
+comemo = { git = "https://github.com/typst/comemo" }
 image = { version = "0.24", default_features = false, features = ["png"] }
 protocol = { path = "../protocol" }
 thiserror = "1"
