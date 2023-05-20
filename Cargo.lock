@@ -231,7 +231,8 @@ checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 [[package]]
 name = "comemo"
 version = "0.3.0"
-source = "git+https://github.com/typst/comemo#3931f17d6921770784e85ac1c312640551575610"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28a097f142aeb5b03af73595536cd55f5d649fca4d656379aac86b3af133cf92"
 dependencies = [
  "comemo-macros",
  "siphasher",
@@ -240,7 +241,8 @@ dependencies = [
 [[package]]
 name = "comemo-macros"
 version = "0.3.0"
-source = "git+https://github.com/typst/comemo#3931f17d6921770784e85ac1c312640551575610"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "168cc09917f6a014a4cf6ed166d1b541a20a768c60f9cc348f25203ee8312940"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -364,9 +366,9 @@ dependencies = [
 
 [[package]]
 name = "digest"
-version = "0.10.6"
+version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8168378f4e5023e7218c89c891c0fd8ecdb5e5e4f18cb78f38cf245dd021e76f"
+checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
  "block-buffer",
  "crypto-common",
@@ -1648,7 +1650,7 @@ checksum = "09eab8a83bff89ba2200bd4c59be45c7c787f988431b936099a5a266c957f2f9"
 [[package]]
 name = "svg2pdf"
 version = "0.4.1"
-source = "git+https://github.com/typst/svg2pdf#29682b1432205bd85de38c51ef9dcc2caea5facc"
+source = "git+https://github.com/typst/svg2pdf#35f4bb87fb677473661c6d12919e01a6d64a716d"
 dependencies = [
  "image",
  "miniz_oxide",
@@ -1994,8 +1996,8 @@ checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
 
 [[package]]
 name = "typst"
-version = "0.3.0"
-source = "git+https://github.com/typst/typst#1fa56a317c8d8da76546e6b5e19b279d84380837"
+version = "0.4.0"
+source = "git+https://github.com/typst/typst#f692a5efc62bf95f57d123895b7dce55d2eb9741"
 dependencies = [
  "bitflags 2.3.1",
  "bytemuck",
@@ -2049,8 +2051,8 @@ dependencies = [
 
 [[package]]
 name = "typst-library"
-version = "0.3.0"
-source = "git+https://github.com/typst/typst#1fa56a317c8d8da76546e6b5e19b279d84380837"
+version = "0.4.0"
+source = "git+https://github.com/typst/typst#f692a5efc62bf95f57d123895b7dce55d2eb9741"
 dependencies = [
  "az",
  "chinese-number",
@@ -2083,8 +2085,8 @@ dependencies = [
 
 [[package]]
 name = "typst-macros"
-version = "0.3.0"
-source = "git+https://github.com/typst/typst#1fa56a317c8d8da76546e6b5e19b279d84380837"
+version = "0.4.0"
+source = "git+https://github.com/typst/typst#f692a5efc62bf95f57d123895b7dce55d2eb9741"
 dependencies = [
  "heck",
  "proc-macro2",
