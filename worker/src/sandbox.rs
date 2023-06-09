@@ -31,9 +31,14 @@ fn make_source(source: String) -> Source {
 	Source::new(SourceId::from_u16(0), FILE_NAME.as_ref(), source)
 }
 
+fn get_time() -> time::OffsetDateTime {
+	time::OffsetDateTime::now_utc()
+}
+
 pub struct WithSource {
 	sandbox: Arc<Sandbox>,
 	source: Source,
+	time: time::OffsetDateTime,
 }
 
 impl Sandbox {
@@ -51,6 +56,7 @@ impl Sandbox {
 		WithSource {
 			sandbox: self,
 			source: make_source(source),
+			time: get_time(),
 		}
 	}
 }
@@ -89,5 +95,13 @@ impl typst::World for WithSource {
 
 	fn file(&self, path: &std::path::Path) -> FileResult<Buffer> {
 		Err(FileError::NotFound(path.into()))
+	}
+
+	fn today(&self, offset: Option<i64>) -> Option<typst::eval::Datetime> {
+		// We are in UTC.
+		let offset = offset.unwrap_or(0);
+		let offset = time::UtcOffset::from_hms(offset.try_into().ok()?, 0, 0).ok()?;
+		let time = self.time.checked_to_offset(offset)?;
+		Some(typst::eval::Datetime::Date(time.date()))
 	}
 }
