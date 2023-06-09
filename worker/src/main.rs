@@ -52,6 +52,10 @@ fn main() {
 				let ast = typst::syntax::parse(&code);
 				Response::Ast(format!("{ast:#?}"))
 			}
+			Request::Version => Response::Version(protocol::VersionResponse {
+				version: env!("TYPST_VERSION").into(),
+				git_hash: env!("TYPST_GIT_HASH").into(),
+			}),
 		};
 
 		comemo::evict(100);

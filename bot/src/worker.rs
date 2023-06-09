@@ -53,6 +53,12 @@ impl Worker {
 		let Response::Ast(response) = response? else { unreachable!() };
 		Ok(response)
 	}
+
+	pub async fn version(&mut self) -> anyhow::Result<protocol::VersionResponse> {
+		let response = self.run(Request::Version).await;
+		let Response::Version(response) = response? else { unreachable!() };
+		Ok(response)
+	}
 }
 
 #[derive(Debug)]

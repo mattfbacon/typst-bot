@@ -335,6 +335,34 @@ async fn ast(
 	Ok(())
 }
 
+#[poise::command(prefix_command, track_edits)]
+async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
+	let pool = &ctx.data().pool;
+
+	let res = pool.lock().await.version().await;
+
+	match res {
+		Ok(version) => {
+			let content = format!(
+				"The bot is using Typst version {}, git hash {}",
+				version.version, version.git_hash,
+			);
+			ctx.send(|reply| reply.content(content).reply(true)).await?;
+		}
+		Err(error) => {
+			ctx
+				.send(|reply| {
+					reply
+						.content(format!("An error occurred:\n```\n{error}```"))
+						.reply(true)
+				})
+				.await?;
+		}
+	}
+
+	Ok(())
+}
+
 pub async fn run() {
 	let pool = Worker::spawn().unwrap();
 
@@ -347,7 +375,7 @@ pub async fn run() {
 				edit_tracker: Some(poise::EditTracker::for_timespan(edit_tracker_time)),
 				..Default::default()
 			},
-			commands: vec![render(), help(), source(), ast()],
+			commands: vec![render(), help(), source(), ast(), version()],
 			..Default::default()
 		})
 		.token(std::env::var("DISCORD_TOKEN").expect("need `DISCORD_TOKEN` env var"))
