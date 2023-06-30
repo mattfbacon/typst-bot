@@ -6,7 +6,7 @@ use std::sync::Arc;
 use protocol::Rendered;
 use typst::diag::SourceError;
 use typst::geom::{Axis, RgbaColor, Size};
-use typst::syntax::{ErrorPos, Source};
+use typst::syntax::Source;
 
 use crate::sandbox::Sandbox;
 use crate::FILE_NAME;
@@ -202,16 +202,11 @@ impl std::fmt::Display for SourceErrorsWithSource {
 		for error in self
 			.errors
 			.iter()
-			.filter(|error| error.span.source() == self.source.id())
+			.filter(|error| error.span.id() == self.source.id())
 		{
 			bytes.clear();
 
-			let span = self.source.range(error.span);
-			let span = match error.pos {
-				ErrorPos::Full => span,
-				ErrorPos::Start => span.start..span.start,
-				ErrorPos::End => span.end..span.end,
-			};
+			let span = error.span.range_in(&self.source);
 			let span = byte_span_to_char_span(source_text, span).ok_or(std::fmt::Error)?;
 
 			let report = Report::build(ariadne::ReportKind::Error, (), span.start)

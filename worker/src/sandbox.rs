@@ -3,11 +3,10 @@ use std::sync::Arc;
 use comemo::Prehashed;
 use typst::diag::{FileError, FileResult};
 use typst::eval::Library;
+use typst::file::FileId;
 use typst::font::{Font, FontBook};
-use typst::syntax::{Source, SourceId};
-use typst::util::Buffer;
-
-use crate::FILE_NAME;
+use typst::syntax::Source;
+use typst::util::Bytes;
 
 pub struct Sandbox {
 	library: Prehashed<Library>,
@@ -21,14 +20,14 @@ fn fonts() -> Vec<Font> {
 		.map(Result::unwrap)
 		.flat_map(|entry| {
 			let bytes = std::fs::read(entry.path()).unwrap();
-			let buffer = Buffer::from(bytes);
+			let buffer = Bytes::from(bytes);
 			Font::iter(buffer)
 		})
 		.collect()
 }
 
 fn make_source(source: String) -> Source {
-	Source::new(SourceId::from_u16(0), FILE_NAME.as_ref(), source)
+	Source::detached(source)
 }
 
 fn get_time() -> time::OffsetDateTime {
@@ -72,17 +71,16 @@ impl typst::World for WithSource {
 		&self.sandbox.library
 	}
 
-	fn main(&self) -> &Source {
-		&self.source
+	fn main(&self) -> Source {
+		self.source.clone()
 	}
 
-	fn resolve(&self, path: &std::path::Path) -> FileResult<SourceId> {
-		Err(FileError::NotFound(path.into()))
-	}
-
-	fn source(&self, id: SourceId) -> &Source {
-		assert_eq!(id, self.source.id());
-		&self.source
+	fn source(&self, id: FileId) -> FileResult<Source> {
+		if id == self.source.id() {
+			Ok(self.source.clone())
+		} else {
+			Err(FileError::NotFound(id.path().into()))
+		}
 	}
 
 	fn book(&self) -> &Prehashed<FontBook> {
@@ -93,8 +91,8 @@ impl typst::World for WithSource {
 		self.sandbox.fonts.get(id).cloned()
 	}
 
-	fn file(&self, path: &std::path::Path) -> FileResult<Buffer> {
-		Err(FileError::NotFound(path.into()))
+	fn file(&self, id: FileId) -> FileResult<Bytes> {
+		Err(FileError::NotFound(id.path().into()))
 	}
 
 	fn today(&self, offset: Option<i64>) -> Option<typst::eval::Datetime> {
