@@ -6,12 +6,20 @@ Built with poise so it has all the goodies like edit tracking, typing status, an
 
 ## Hosting
 
-To set up, create a directory with the following items:
+The bot uses two binaries:
+
+- `bot`: connects to Discord and processes messages
+- `worker`: receives requests, interacts with Typst, responds
+
+`bot` will automatically spawn `worker`, so you only need to run `bot`.
+
+To set up the working environment, create a directory with the following items:
 
 - `fonts`: Copied from the repo. Make sure you have Git LFS set up so the fonts are downloaded properly.
-- `worker`: the worker binary, copied from the target directory after building.
+- `worker`: The worker binary, copied/hardlinked from the target directory after building.
+- `bot`: The bot binary, copied/hardlinked from the target directory after building. (This doesn't need to be in this directory, but having everything in one place simplifies things.)
 
-To run, enter the bot's working directory, set `DISCORD_TOKEN` to your bot token, and run the bot binary.
+To run, CD into this directory, set `DISCORD_TOKEN` to your bot token, and run the `bot` binary (not the `worker` binary that's also in the directory).
 
 ## License
 
