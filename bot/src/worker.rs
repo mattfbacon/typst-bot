@@ -44,19 +44,25 @@ impl Worker {
 
 	pub async fn render(&mut self, code: String) -> anyhow::Result<protocol::Rendered> {
 		let response = self.run(Request::Render { code }).await;
-		let Response::Render(response) = response? else { unreachable!() };
+		let Response::Render(response) = response? else {
+			unreachable!()
+		};
 		response.map_err(|error| anyhow!(error))
 	}
 
 	pub async fn ast(&mut self, code: String) -> anyhow::Result<protocol::AstResponse> {
 		let response = self.run(Request::Ast { code }).await;
-		let Response::Ast(response) = response? else { unreachable!() };
+		let Response::Ast(response) = response? else {
+			unreachable!()
+		};
 		Ok(response)
 	}
 
 	pub async fn version(&mut self) -> anyhow::Result<protocol::VersionResponse> {
 		let response = self.run(Request::Version).await;
-		let Response::Version(response) = response? else { unreachable!() };
+		let Response::Version(response) = response? else {
+			unreachable!()
+		};
 		Ok(response)
 	}
 }
