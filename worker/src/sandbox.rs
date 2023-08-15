@@ -22,6 +22,8 @@ impl FileEntry {
 			source
 		} else {
 			let contents = std::str::from_utf8(&self.bytes).map_err(|_| FileError::InvalidUtf8)?;
+			// Defuse the BOM!
+			let contents = contents.trim_start_matches('\u{feff}');
 			let source = Source::new(id, contents.into());
 			self.source.insert(source)
 		};
