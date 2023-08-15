@@ -10,9 +10,9 @@ pub struct Worker {
 }
 
 impl Worker {
-	pub fn spawn() -> anyhow::Result<Self> {
+	pub async fn spawn() -> anyhow::Result<Self> {
 		Ok(Self {
-			process: Process::spawn()?,
+			process: Process::spawn().await?,
 		})
 	}
 
@@ -74,22 +74,31 @@ struct Process {
 }
 
 impl Process {
-	fn spawn() -> anyhow::Result<Self> {
+	async fn spawn() -> anyhow::Result<Self> {
 		let mut child = std::process::Command::new("./worker")
 			.stdin(Stdio::piped())
 			.stdout(Stdio::piped())
 			.spawn()
 			.context("spawning worker process.\n\nthis is likely because you are trying to run the bot from a checkout of the repo and `worker` is a directory. you can fix this by changing the path to the worker binary to point to the worker binary in the cargo target directory. alternatively, follow the instructions in the README that describe how to set up a standalone installation.")?;
+
 		let stdin = child.stdin.take().unwrap();
 		let stdout = child.stdout.take().unwrap();
-		Ok(Self {
+
+		let mut ret = Self {
 			io: Some((stdin, stdout)),
 			child,
-		})
+		};
+		// Ask for the version and ignore it, as a health check.
+		ret
+			.communicate(Request::Version)
+			.await
+			.context("initial health check")?;
+
+		Ok(ret)
 	}
 
 	async fn replace(&mut self) -> anyhow::Result<()> {
-		let new = Self::spawn()?;
+		let new = Self::spawn().await?;
 		let mut old = std::mem::replace(self, new);
 		tokio::task::spawn_blocking(move || {
 			_ = old.child.kill();

@@ -401,7 +401,7 @@ async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
 }
 
 pub async fn run() {
-	let pool = Worker::spawn().unwrap();
+	let pool = Worker::spawn().await.unwrap();
 
 	let edit_tracker_time = std::time::Duration::from_secs(3600);
 
