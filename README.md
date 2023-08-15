@@ -21,6 +21,8 @@ To set up the working environment, create a directory with the following items:
 
 To run, CD into this directory, set `DISCORD_TOKEN` to your bot token, and run the `bot` binary (not the `worker` binary that's also in the directory).
 
+To allow use of packages, set `CACHE_DIRECTORY` to a directory to download and read packages from.
+
 ## License
 
 AGPL. Use `?source` to get a link to the source from deployments of the bot.
