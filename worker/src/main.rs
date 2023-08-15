@@ -45,7 +45,7 @@ fn main() {
 				let response = std::panic::catch_unwind(AssertUnwindSafe(move || render(sandbox, code)));
 				let response = response
 					.map_err(|panic| panic_to_string(&*panic))
-					.and_then(|inner| inner.map_err(|error| error.to_string()));
+					.and_then(|inner| inner);
 				Response::Render(response)
 			}
 			Request::Ast { code } => {

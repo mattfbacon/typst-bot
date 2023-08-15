@@ -13,6 +13,7 @@ pub enum Request {
 pub struct Rendered {
 	pub image: Vec<u8>,
 	pub more_pages: Option<NonZeroUsize>,
+	pub warnings: String,
 }
 
 pub type RenderResponse = Result<Rendered, String>;

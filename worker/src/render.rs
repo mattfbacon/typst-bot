@@ -4,7 +4,8 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use protocol::Rendered;
-use typst::diag::SourceError;
+use typst::diag::SourceDiagnostic;
+use typst::eval::Tracer;
 use typst::geom::{Axis, RgbaColor, Size};
 use typst::syntax::Source;
 
@@ -46,12 +47,6 @@ fn determine_pixels_per_point(size: Size) -> Result<f32, TooBig> {
 		let nominal = DESIRED_RESOLUTION / area.sqrt();
 		Ok(nominal.min(MAX_PIXELS_PER_POINT))
 	}
-}
-
-#[derive(Debug)]
-pub struct SourceErrorsWithSource {
-	source: Source,
-	errors: Vec<SourceError>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -178,76 +173,81 @@ fn test_byte_span_to_char_span() {
 	assert_eq!(byte_span_to_char_span("あか", 6..3), None);
 }
 
-impl std::fmt::Display for SourceErrorsWithSource {
-	fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		use ariadne::{Config, Label, Report};
+fn format_diagnostics(source: &Source, diagnostics: &[SourceDiagnostic]) -> String {
+	use ariadne::{Config, Label, Report};
 
-		struct SourceCache(ariadne::Source);
-
-		impl ariadne::Cache<()> for SourceCache {
-			fn fetch(&mut self, _id: &()) -> Result<&ariadne::Source, Box<dyn std::fmt::Debug + '_>> {
-				Ok(&self.0)
-			}
-
-			fn display<'a>(&self, _id: &'a ()) -> Option<Box<dyn std::fmt::Display + 'a>> {
-				Some(Box::new(FILE_NAME))
-			}
+	fn severity_to_report_kind(severity: typst::diag::Severity) -> ariadne::ReportKind<'static> {
+		match severity {
+			typst::diag::Severity::Error => ariadne::ReportKind::Error,
+			typst::diag::Severity::Warning => ariadne::ReportKind::Warning,
 		}
-
-		let source_text = self.source.text();
-		let mut cache = SourceCache(ariadne::Source::from(source_text));
-
-		let mut bytes = Vec::new();
-
-		for error in self
-			.errors
-			.iter()
-			.filter(|error| error.span.id() == self.source.id())
-		{
-			bytes.clear();
-
-			let span = error.span.range_in(&self.source);
-			let span = byte_span_to_char_span(source_text, span).ok_or(std::fmt::Error)?;
-
-			let report = Report::build(ariadne::ReportKind::Error, (), span.start)
-				.with_config(Config::default().with_tab_width(2).with_color(false))
-				.with_message(&error.message)
-				.with_label(Label::new(span))
-				.finish();
-			// The unwrap will never fail since `Vec`'s `Write` implementation is infallible.
-			report.write(&mut cache, &mut bytes).unwrap();
-
-			// The unwrap will never fail since the output string is always valid UTF-8.
-			formatter.write_str(std::str::from_utf8(&bytes).unwrap())?;
-		}
-
-		Ok(())
 	}
+
+	struct SourceCache(ariadne::Source);
+
+	impl ariadne::Cache<()> for SourceCache {
+		fn fetch(&mut self, _id: &()) -> Result<&ariadne::Source, Box<dyn std::fmt::Debug + '_>> {
+			Ok(&self.0)
+		}
+
+		fn display<'a>(&self, _id: &'a ()) -> Option<Box<dyn std::fmt::Display + 'a>> {
+			Some(Box::new(FILE_NAME))
+		}
+	}
+
+	let source_text = source.text();
+	let mut cache = SourceCache(ariadne::Source::from(source_text));
+
+	let mut bytes = Vec::new();
+
+	for diagnostic in diagnostics
+		.iter()
+		.filter(|diagnostic| diagnostic.span.id() == source.id())
+	{
+		let span = source.range(diagnostic.span);
+		// We assume that all diagnostics are correctly spanned.
+		let span = byte_span_to_char_span(source_text, span)
+			.expect("invalid byte span reported by typst diagnostic");
+
+		let mut report = Report::build(severity_to_report_kind(diagnostic.severity), (), span.start)
+			.with_config(Config::default().with_tab_width(2).with_color(false))
+			.with_message(&diagnostic.message)
+			.with_label(Label::new(span));
+		if !diagnostic.hints.is_empty() {
+			report = report.with_help(diagnostic.hints.join("\n"));
+		}
+		let report = report.finish();
+		// The unwrap will never fail since `Vec`'s `Write` implementation is infallible.
+		report.write(&mut cache, &mut bytes).unwrap();
+
+		bytes.push(b'\n');
+	}
+
+	// Remove extra spacing newline.
+	if bytes.ends_with(b"\n") {
+		bytes.pop();
+	}
+
+	// The unwrap will never fail since the report is always valid UTF-8.
+	String::from_utf8(bytes).unwrap()
 }
 
-impl std::error::Error for SourceErrorsWithSource {}
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-	#[error(transparent)]
-	Source(#[from] SourceErrorsWithSource),
-	#[error(transparent)]
-	TooBig(#[from] TooBig),
-	#[error("no pages in rendered output")]
-	NoPages,
+fn to_string(v: impl ToString) -> String {
+	v.to_string()
 }
 
-pub fn render(sandbox: Arc<Sandbox>, source: String) -> Result<Rendered, Error> {
+pub fn render(sandbox: Arc<Sandbox>, source: String) -> Result<Rendered, String> {
 	let world = sandbox.with_source(source);
 
-	let document = typst::compile(&world).map_err(|errors| SourceErrorsWithSource {
-		source: world.into_source(),
-		errors: *errors,
-	})?;
-	let frame = &document.pages.get(0).ok_or(Error::NoPages)?;
+	let mut tracer = Tracer::default();
+	let document = typst::compile(&world, &mut tracer)
+		.map_err(|diags| format_diagnostics(world.source(), &diags))?;
+	let warnings = tracer.warnings();
+
+	let frame = &document.pages.get(0).ok_or("no pages in rendered output")?;
 	let more_pages = NonZeroUsize::new(document.pages.len().saturating_sub(1));
 
-	let pixels_per_point = determine_pixels_per_point(frame.size())?;
+	let pixels_per_point = determine_pixels_per_point(frame.size()).map_err(to_string)?;
 
 	let pixmap = typst::export::render(frame, pixels_per_point, RgbaColor::new(0, 0, 0, 0).into());
 
@@ -265,5 +265,9 @@ pub fn render(sandbox: Arc<Sandbox>, source: String) -> Result<Rendered, Error> 
 	.unwrap();
 
 	let image = writer.into_inner();
-	Ok(Rendered { image, more_pages })
+	Ok(Rendered {
+		image,
+		more_pages,
+		warnings: format_diagnostics(world.source(), &warnings),
+	})
 }

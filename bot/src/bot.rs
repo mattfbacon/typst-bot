@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::{Display, Write as _};
 use std::str::FromStr;
 
 use poise::async_trait;
@@ -12,8 +13,26 @@ use crate::SOURCE_URL;
 ///
 /// U+200C is a zero-width non-joiner.
 /// It prevents the triple backtick from being interpreted as a codeblock but retains ligature support.
-fn sanitize_code_block(raw: &str) -> String {
-	raw.replace("```", "``\u{200c}`")
+fn sanitize_code_block(raw: &str) -> impl Display + '_ {
+	struct Helper<'a>(&'a str);
+
+	impl Display for Helper<'_> {
+		fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+			for section in self.0.split_inclusive("```") {
+				let (safe, should_append) = section
+					.strip_suffix("```")
+					.map_or((section, false), |safe| (safe, true));
+				formatter.write_str(safe)?;
+				if should_append {
+					formatter.write_str("``\u{200c}`")?;
+				}
+			}
+
+			Ok(())
+		}
+	}
+
+	Helper(raw)
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -233,12 +252,29 @@ async fn render(
 						})
 						.reply(true);
 
+					let mut content = String::new();
+
 					if let Some(more_pages) = res.more_pages {
 						let more_pages = more_pages.get();
-						reply.content(format!(
+						write!(
+							content,
 							"Note: {more_pages} more page{s} ignored",
-							s = if more_pages == 1 { "" } else { "s" }
-						));
+							s = if more_pages == 1 { "" } else { "s" },
+						)
+						.unwrap();
+					}
+
+					if !res.warnings.is_empty() {
+						let warnings = sanitize_code_block(&res.warnings);
+						write!(
+							content,
+							"Render succeeded with warnings:\n```\n{warnings}\n```",
+						)
+						.unwrap();
+					}
+
+					if !content.is_empty() {
+						reply.content(content);
 					}
 
 					reply
@@ -246,11 +282,12 @@ async fn render(
 				.await?;
 		}
 		Err(error) => {
-			let error = sanitize_code_block(&format!("{error:?}"));
+			let error = format!("{error:?}");
+			let error = sanitize_code_block(&error);
 			ctx
 				.send(|reply| {
 					reply
-						.content(format!("An error occurred:\n```\n{error}```"))
+						.content(format!("An error occurred:\n```\n{error}\n```"))
 						.reply(true)
 				})
 				.await?;

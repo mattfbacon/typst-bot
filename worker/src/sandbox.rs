@@ -2,11 +2,9 @@ use std::sync::Arc;
 
 use comemo::Prehashed;
 use typst::diag::{FileError, FileResult};
-use typst::eval::Library;
-use typst::file::FileId;
+use typst::eval::{Bytes, Library};
 use typst::font::{Font, FontBook};
-use typst::syntax::Source;
-use typst::util::Bytes;
+use typst::syntax::{FileId, Source};
 
 pub struct Sandbox {
 	library: Prehashed<Library>,
@@ -61,8 +59,8 @@ impl Sandbox {
 }
 
 impl WithSource {
-	pub fn into_source(self) -> Source {
-		self.source
+	pub fn source(&self) -> &Source {
+		&self.source
 	}
 }
 
