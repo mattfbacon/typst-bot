@@ -1,15 +1,42 @@
+use std::cell::{RefCell, RefMut};
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use comemo::Prehashed;
-use typst::diag::{FileError, FileResult};
+use typst::diag::{FileError, FileResult, PackageError, PackageResult};
 use typst::eval::{Bytes, Library};
 use typst::font::{Font, FontBook};
-use typst::syntax::{FileId, Source};
+use typst::syntax::{FileId, PackageSpec, Source};
+
+struct FileEntry {
+	bytes: Bytes,
+	/// This field is filled on demand.
+	source: Option<Source>,
+}
+
+impl FileEntry {
+	fn source(&mut self, id: FileId) -> FileResult<Source> {
+		// Fallible `get_or_insert`.
+		let source = if let Some(source) = &self.source {
+			source
+		} else {
+			let contents = std::str::from_utf8(&self.bytes).map_err(|_| FileError::InvalidUtf8)?;
+			let source = Source::new(id, contents.into());
+			self.source.insert(source)
+		};
+		Ok(source.clone())
+	}
+}
 
 pub struct Sandbox {
 	library: Prehashed<Library>,
 	book: Prehashed<FontBook>,
 	fonts: Vec<Font>,
+
+	cache_directory: PathBuf,
+	http: ureq::Agent,
+	files: RefCell<HashMap<FileId, FileEntry>>,
 }
 
 fn fonts() -> Vec<Font> {
@@ -46,6 +73,12 @@ impl Sandbox {
 			library: Prehashed::new(typst_library::build()),
 			book: Prehashed::new(FontBook::from_fonts(&fonts)),
 			fonts,
+
+			cache_directory: std::env::var_os("CACHE_DIRECTORY")
+				.expect("need the `CACHE_DIRECTORY` env var")
+				.into(),
+			http: ureq::Agent::new(),
+			files: RefCell::new(HashMap::new()),
 		}
 	}
 
@@ -55,6 +88,57 @@ impl Sandbox {
 			source: make_source(source),
 			time: get_time(),
 		}
+	}
+
+	/// Returns the system path of the unpacked package.
+	fn ensure_package(&self, package: &PackageSpec) -> PackageResult<PathBuf> {
+		let package_subdir = format!("{}/{}/{}", package.namespace, package.name, package.version);
+		let path = self.cache_directory.join(package_subdir);
+
+		if path.exists() {
+			return Ok(path);
+		}
+
+		let url = format!(
+			"https://packages.typst.org/{}/{}-{}.tar.gz",
+			package.namespace, package.name, package.version,
+		);
+
+		let response = self
+			.http
+			.get(&url)
+			.call()
+			.map_err(|_| PackageError::NetworkFailed)?;
+
+		let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(response.into_reader()));
+		archive.unpack(&path).map_err(|_| {
+			_ = std::fs::remove_dir_all(&path);
+			PackageError::MalformedArchive
+		})?;
+
+		Ok(path)
+	}
+
+	fn file(&self, id: FileId) -> FileResult<RefMut<'_, FileEntry>> {
+		if let Ok(entry) = RefMut::filter_map(self.files.borrow_mut(), |files| files.get_mut(&id)) {
+			return Ok(entry);
+		}
+
+		if let Some(package) = id.package() {
+			let package_dir = self.ensure_package(package)?;
+			// `FileId::path` is always absolute.
+			let target = id.path().strip_prefix("/").unwrap();
+			let path = package_dir.join(target);
+			let contents = std::fs::read(&path).map_err(|error| FileError::from_io(error, &path))?;
+			return Ok(RefMut::map(self.files.borrow_mut(), |files| {
+				files.entry(id).or_insert(FileEntry {
+					bytes: contents.into(),
+					source: None,
+				})
+			}));
+		}
+
+		Err(FileError::NotFound(id.path().into()))
 	}
 }
 
@@ -77,7 +161,7 @@ impl typst::World for WithSource {
 		if id == self.source.id() {
 			Ok(self.source.clone())
 		} else {
-			Err(FileError::NotFound(id.path().into()))
+			self.sandbox.file(id)?.source(id)
 		}
 	}
 
@@ -90,7 +174,7 @@ impl typst::World for WithSource {
 	}
 
 	fn file(&self, id: FileId) -> FileResult<Bytes> {
-		Err(FileError::NotFound(id.path().into()))
+		self.sandbox.file(id).map(|file| file.bytes.clone())
 	}
 
 	fn today(&self, offset: Option<i64>) -> Option<typst::eval::Datetime> {

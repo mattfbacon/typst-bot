@@ -1,1 +1,3 @@
 /target
+# Used as the package cache during testing.
+/cache

@@ -15,5 +15,10 @@ time = "0.3"
 typst = { git = "https://github.com/typst/typst" }
 typst-library = { git = "https://github.com/typst/typst" }
 
+# downloading packages
+flate2 = "1"
+tar = "0.4"
+ureq = "2"
+
 [build-dependencies]
 cargo_metadata = "0.15"
