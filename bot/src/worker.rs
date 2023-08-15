@@ -22,7 +22,7 @@ impl Worker {
 		request: Request,
 		progress_channel: Option<mpsc::Sender<String>>,
 	) -> anyhow::Result<Response> {
-		let timeout = Duration::from_secs(5);
+		let timeout = Duration::from_secs(10);
 		let mut tries_left = 2;
 
 		loop {
