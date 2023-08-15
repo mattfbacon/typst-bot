@@ -31,4 +31,7 @@ pub enum Response {
 	Render(RenderResponse),
 	Ast(AstResponse),
 	Version(VersionResponse),
+	/// This can be sent at any time and is not considered a final response for a request,
+	/// but can be shown to the user in the meantime as a progress update.
+	Progress(String),
 }

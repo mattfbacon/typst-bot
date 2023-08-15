@@ -4,7 +4,8 @@ use std::str::FromStr;
 
 use poise::async_trait;
 use poise::serenity_prelude::{AttachmentType, GatewayIntents};
-use tokio::sync::Mutex;
+use tokio::join;
+use tokio::sync::{mpsc, Mutex};
 
 use crate::worker::Worker;
 use crate::SOURCE_URL;
@@ -239,7 +240,27 @@ async fn render(
 	let mut source = code.code;
 	source.insert_str(0, &flags.preamble.preamble());
 
-	let res = pool.lock().await.render(source).await;
+	let mut progress = String::new();
+	let (progress_send, mut progress_recv) = mpsc::channel(4);
+	let (res, _) = {
+		let mut pool = pool.lock().await;
+		join!(pool.render(source, progress_send), async {
+			// When `render` finishes, it will drop the sender so this loop will finish.
+			while let Some(item) = progress_recv.recv().await {
+				progress.reserve(item.len() + 1);
+				progress.push_str(&item);
+				progress.push('\n');
+				_ = ctx
+					.send(|reply| {
+						reply.content(format!(
+							"Progress: ```\n{}\n```",
+							sanitize_code_block(&progress)
+						))
+					})
+					.await;
+			}
+		})
+	};
 
 	match res {
 		Ok(res) => {

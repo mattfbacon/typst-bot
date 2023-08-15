@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context as _};
 use protocol::{Request, Response};
+use tokio::sync::mpsc;
 
 #[derive(Debug)]
 pub struct Worker {
@@ -16,12 +17,18 @@ impl Worker {
 		})
 	}
 
-	async fn run(&mut self, request: Request) -> anyhow::Result<Response> {
+	async fn run(
+		&mut self,
+		request: Request,
+		progress_channel: Option<mpsc::Sender<String>>,
+	) -> anyhow::Result<Response> {
 		let timeout = Duration::from_secs(5);
 		let mut tries_left = 2;
 
 		loop {
-			let res = tokio::time::timeout(timeout, self.process.communicate(request.clone())).await;
+			let progress_channel = progress_channel.clone();
+			let fut = self.process.communicate(request.clone(), progress_channel);
+			let res = tokio::time::timeout(timeout, fut).await;
 
 			let error = match res {
 				Ok(res @ Ok(..)) => break res,
@@ -42,8 +49,14 @@ impl Worker {
 		}
 	}
 
-	pub async fn render(&mut self, code: String) -> anyhow::Result<protocol::Rendered> {
-		let response = self.run(Request::Render { code }).await;
+	pub async fn render(
+		&mut self,
+		code: String,
+		progress_channel: mpsc::Sender<String>,
+	) -> anyhow::Result<protocol::Rendered> {
+		let response = self
+			.run(Request::Render { code }, Some(progress_channel))
+			.await;
 		let Response::Render(response) = response? else {
 			unreachable!()
 		};
@@ -51,7 +64,7 @@ impl Worker {
 	}
 
 	pub async fn ast(&mut self, code: String) -> anyhow::Result<protocol::AstResponse> {
-		let response = self.run(Request::Ast { code }).await;
+		let response = self.run(Request::Ast { code }, None).await;
 		let Response::Ast(response) = response? else {
 			unreachable!()
 		};
@@ -59,7 +72,7 @@ impl Worker {
 	}
 
 	pub async fn version(&mut self) -> anyhow::Result<protocol::VersionResponse> {
-		let response = self.run(Request::Version).await;
+		let response = self.run(Request::Version, None).await;
 		let Response::Version(response) = response? else {
 			unreachable!()
 		};
@@ -90,7 +103,7 @@ impl Process {
 		};
 		// Ask for the version and ignore it, as a health check.
 		ret
-			.communicate(Request::Version)
+			.communicate(Request::Version, None)
 			.await
 			.context("initial health check")?;
 
@@ -109,18 +122,33 @@ impl Process {
 		Ok(())
 	}
 
-	async fn communicate(&mut self, request: Request) -> anyhow::Result<Response> {
+	async fn communicate(
+		&mut self,
+		request: Request,
+		progress_channel: Option<mpsc::Sender<String>>,
+	) -> anyhow::Result<Response> {
 		let (mut stdin, mut stdout) = self.io.take().unwrap();
 		let (stdin, stdout, res) = tokio::task::spawn_blocking(move || {
 			fn inner(
 				stdin: &mut ChildStdin,
 				stdout: &mut ChildStdout,
 				request: &Request,
+				progress_channel: &Option<mpsc::Sender<String>>,
 			) -> bincode::Result<Response> {
 				bincode::serialize_into(stdin, &request)?;
-				bincode::deserialize_from(stdout)
+				loop {
+					let response: Response = bincode::deserialize_from(&mut *stdout)?;
+
+					if let Response::Progress(progress) = response {
+						if let Some(chan) = &progress_channel {
+							_ = chan.blocking_send(progress);
+						}
+					} else {
+						break Ok(response);
+					}
+				}
 			}
-			let res = inner(&mut stdin, &mut stdout, &request);
+			let res = inner(&mut stdin, &mut stdout, &request, &progress_channel);
 			(stdin, stdout, res)
 		})
 		.await

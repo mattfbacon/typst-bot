@@ -101,6 +101,9 @@ impl Sandbox {
 			return Ok(path);
 		}
 
+		eprintln!("downloading {package}");
+		crate::write_progress(format!("downloading {package}"));
+
 		let url = format!(
 			"https://packages.typst.org/{}/{}-{}.tar.gz",
 			package.namespace, package.name, package.version,

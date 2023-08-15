@@ -21,13 +21,23 @@ fn panic_to_string(panic: &dyn std::any::Any) -> String {
 	format!("panicked at '{inner}'")
 }
 
+fn write_response(response: &Response) {
+	let mut stdout = std::io::stdout().lock();
+	bincode::serialize_into(&mut stdout, &response).unwrap();
+	stdout.flush().unwrap();
+}
+
+/// This can be changed to `&str` by changing the field in the protocol response to a `Cow`,
+/// but currently there's no reason to because the string is dynamically formatted anyway.
+fn write_progress(msg: String) {
+	write_response(&Response::Progress(msg));
+}
+
 fn main() {
 	let sandbox = Arc::new(Sandbox::new());
 
-	let mut stdin = std::io::stdin().lock();
-	let mut stdout = std::io::stdout().lock();
 	loop {
-		let res = bincode::deserialize_from(&mut stdin);
+		let res = bincode::deserialize_from(std::io::stdin().lock());
 
 		if let Err(error) = &res {
 			if let bincode::ErrorKind::Io(error) = &**error {
@@ -60,7 +70,6 @@ fn main() {
 
 		comemo::evict(100);
 
-		bincode::serialize_into(&mut stdout, &response).unwrap();
-		stdout.flush().unwrap();
+		write_response(&response);
 	}
 }
