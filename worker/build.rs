@@ -18,7 +18,8 @@ fn main() {
 		.as_ref()
 		.unwrap()
 		.repr
-		.strip_prefix("git+https://github.com/typst/typst#")
+		.split("#")
+		.last()
 		.unwrap();
 
 	println!("cargo:rustc-env=TYPST_VERSION={version}");

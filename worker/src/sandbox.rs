@@ -1,3 +1,6 @@
+use std::cell::{RefCell, RefMut};
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use comemo::Prehashed;
@@ -5,6 +8,10 @@ use typst::diag::{FileError, FileResult};
 use typst::eval::{Bytes, Library};
 use typst::font::{Font, FontBook};
 use typst::syntax::{FileId, Source};
+use typst::util::PathExt;
+
+use crate::file::{PathHash, PathSlot};
+use crate::package::prepare_package;
 
 pub struct Sandbox {
 	library: Prehashed<Library>,
@@ -36,6 +43,8 @@ pub struct WithSource {
 	sandbox: Arc<Sandbox>,
 	source: Source,
 	time: time::OffsetDateTime,
+	hashes: RefCell<HashMap<FileId, FileResult<PathHash>>>,
+	paths: RefCell<HashMap<PathHash, PathSlot>>,
 }
 
 impl Sandbox {
@@ -54,6 +63,8 @@ impl Sandbox {
 			sandbox: self,
 			source: make_source(source),
 			time: get_time(),
+			hashes: RefCell::default(),
+			paths: RefCell::default(),
 		}
 	}
 }
@@ -61,6 +72,37 @@ impl Sandbox {
 impl WithSource {
 	pub fn source(&self) -> &Source {
 		&self.source
+	}
+
+	fn slot(&self, id: FileId) -> FileResult<RefMut<PathSlot>> {
+		let mut system_path = PathBuf::new();
+		let hash = self
+			.hashes
+			.borrow_mut()
+			.entry(id)
+			.or_insert_with(|| {
+				// Determine the root path relative to which the file path
+				// will be resolved.
+				let root = match id.package() {
+					Some(spec) => prepare_package(spec)?,
+					None => PathBuf::from("."),
+				};
+
+				// Join the path to the root. If it tries to escape, deny
+				// access. Note: It can still escape via symlinks.
+				system_path = root.join_rooted(id.path()).ok_or(FileError::AccessDenied)?;
+
+				PathHash::new(&system_path)
+			})
+			.clone()?;
+
+		Ok(RefMut::map(self.paths.borrow_mut(), |paths| {
+			paths
+				.entry(hash)
+				// This will only trigger if the `or_insert_with` above also
+				// triggered.
+				.or_insert_with(|| PathSlot::new(id, system_path))
+		}))
 	}
 }
 
@@ -76,6 +118,8 @@ impl typst::World for WithSource {
 	fn source(&self, id: FileId) -> FileResult<Source> {
 		if id == self.source.id() {
 			Ok(self.source.clone())
+		} else if id.package().is_some() {
+			self.slot(id)?.source()
 		} else {
 			Err(FileError::NotFound(id.path().into()))
 		}
@@ -90,7 +134,11 @@ impl typst::World for WithSource {
 	}
 
 	fn file(&self, id: FileId) -> FileResult<Bytes> {
-		Err(FileError::NotFound(id.path().into()))
+		if id.package().is_some() {
+			self.slot(id)?.file()
+		} else {
+			Err(FileError::NotFound(id.path().into()))
+		}
 	}
 
 	fn today(&self, offset: Option<i64>) -> Option<typst::eval::Datetime> {

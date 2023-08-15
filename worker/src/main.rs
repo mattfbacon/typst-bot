@@ -7,6 +7,8 @@ use protocol::{Request, Response};
 use crate::render::render;
 use crate::sandbox::Sandbox;
 
+mod file;
+mod package;
 mod render;
 mod sandbox;
 

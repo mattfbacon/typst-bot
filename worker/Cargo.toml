@@ -8,12 +8,17 @@ ariadne = { version = "0.3", default_features = false }
 bincode = "1"
 bytemuck = "1"
 comemo = "0.3"
+flate2 = "1.0.27"
 image = { version = "0.24", default_features = false, features = ["png"] }
 protocol = { path = "../protocol" }
+same-file = "1.0.6"
+siphasher = "0.3.10"
+tar = "0.4.40"
 thiserror = "1"
 time = "0.3"
-typst = { git = "https://github.com/typst/typst" }
-typst-library = { git = "https://github.com/typst/typst" }
+typst = { git = "https://github.com/typst/typst", tag = "v0.7.0" }
+typst-library = { git = "https://github.com/typst/typst", tag = "v0.7.0" }
+ureq = "2.7.1"
 
 [build-dependencies]
 cargo_metadata = "0.15"
