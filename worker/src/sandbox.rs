@@ -61,6 +61,11 @@ fn get_time() -> time::OffsetDateTime {
 	time::OffsetDateTime::now_utc()
 }
 
+fn http_successful(status: u16) -> bool {
+	// 2XX
+	status / 100 == 2
+}
+
 pub struct WithSource {
 	sandbox: Arc<Sandbox>,
 	source: Source,
@@ -113,7 +118,9 @@ impl Sandbox {
 			.http
 			.get(&url)
 			.call()
-			.map_err(|_| PackageError::NetworkFailed)?;
+			.ok()
+			.filter(|response| http_successful(response.status()))
+			.ok_or(PackageError::NetworkFailed)?;
 
 		let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(response.into_reader()));
 		archive.unpack(&path).map_err(|_| {
