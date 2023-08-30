@@ -1,6 +1,7 @@
 [workspace]
 members = ["bot", "protocol", "worker"]
 default-members = ["bot"]
+resolver = "2"
 
 [profile.release]
 lto = "thin"
