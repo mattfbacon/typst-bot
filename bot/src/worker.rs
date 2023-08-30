@@ -1,9 +1,12 @@
+use std::pin::pin;
 use std::process::{Child, Stdio};
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context as _};
 use protocol::{Request, Response};
+use tokio::select;
 use tokio::sync::mpsc;
+use tokio::time::Instant;
 
 #[derive(Debug)]
 pub struct Worker {
@@ -20,31 +23,61 @@ impl Worker {
 	async fn run(
 		&mut self,
 		request: Request,
-		progress_channel: Option<mpsc::Sender<String>>,
+		progress_channel_outer: Option<mpsc::Sender<String>>,
 	) -> anyhow::Result<Response> {
-		let timeout = Duration::from_secs(10);
+		struct Timeout;
+
+		// This timeout is reset any time a progress message is received.
+		let fast_timeout = Duration::from_secs(5);
+		// This is a universal timeout that is never reset.
+		let long_timeout = Duration::from_secs(30);
 		let mut tries_left = 2;
 
 		loop {
-			let progress_channel = progress_channel.clone();
-			let fut = self.process.communicate(request.clone(), progress_channel);
-			let res = tokio::time::timeout(timeout, fut).await;
+			let (progress_inner_send, mut progress_inner_recv) = mpsc::channel(1);
+
+			let res = {
+				let mut fut = pin!(self
+					.process
+					.communicate(request.clone(), Some(progress_inner_send)));
+				let mut fast_timeout_fut = pin!(tokio::time::sleep(fast_timeout));
+				let mut long_timeout_fut = pin!(tokio::time::sleep(long_timeout));
+				loop {
+					select! {
+						res = fut.as_mut() => {
+							break Ok(res);
+						}
+						Some(progress) = progress_inner_recv.recv() => {
+							fast_timeout_fut.as_mut().reset(Instant::now() + fast_timeout);
+							if let Some(outer) = &progress_channel_outer {
+								_ = outer.send(progress).await;
+							}
+						}
+						_ = fast_timeout_fut.as_mut() => {
+							break Err(Timeout);
+						}
+						_ = long_timeout_fut.as_mut() => {
+							break Err(Timeout);
+						}
+					};
+				}
+			};
 
 			let error = match res {
-				Ok(res @ Ok(..)) => break res,
+				Ok(Ok(response)) => return Ok(response),
 				Ok(Err(error)) => {
 					self.process.replace().await?;
 					error
 				}
-				Err(_timeout) => {
+				Err(Timeout) => {
 					self.process.replace().await?;
-					break Err(anyhow!("timeout"));
+					bail!("timeout");
 				}
 			};
 
 			tries_left -= 1;
 			if tries_left == 0 {
-				break Err(error);
+				return Err(error);
 			}
 		}
 	}
