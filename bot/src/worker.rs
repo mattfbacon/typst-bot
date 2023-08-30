@@ -1,7 +1,7 @@
 use std::process::{Child, ChildStdin, ChildStdout, Stdio};
 use std::time::Duration;
 
-use anyhow::{anyhow, Context as _};
+use anyhow::{anyhow, bail, Context as _};
 use protocol::{Request, Response};
 use tokio::sync::mpsc;
 
@@ -56,25 +56,25 @@ impl Worker {
 	) -> anyhow::Result<protocol::Rendered> {
 		let response = self
 			.run(Request::Render { code }, Some(progress_channel))
-			.await;
-		let Response::Render(response) = response? else {
-			unreachable!()
+			.await?;
+		let Response::Render(response) = response else {
+			bail!("expected Render response, got {response:?}");
 		};
 		response.map_err(|error| anyhow!(error))
 	}
 
 	pub async fn ast(&mut self, code: String) -> anyhow::Result<protocol::AstResponse> {
-		let response = self.run(Request::Ast { code }, None).await;
-		let Response::Ast(response) = response? else {
-			unreachable!()
+		let response = self.run(Request::Ast { code }, None).await?;
+		let Response::Ast(response) = response else {
+			bail!("expected Ast response, got {response:?}");
 		};
 		Ok(response)
 	}
 
 	pub async fn version(&mut self) -> anyhow::Result<protocol::VersionResponse> {
-		let response = self.run(Request::Version, None).await;
-		let Response::Version(response) = response? else {
-			unreachable!()
+		let response = self.run(Request::Version, None).await?;
+		let Response::Version(response) = response else {
+			bail!("expected Version response, got {response:?}");
 		};
 		Ok(response)
 	}
