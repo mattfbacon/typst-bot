@@ -1,4 +1,4 @@
-use std::process::{Child, ChildStdin, ChildStdout, Stdio};
+use std::process::{Child, Stdio};
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context as _};
@@ -82,25 +82,19 @@ impl Worker {
 
 #[derive(Debug)]
 struct Process {
-	child: Child,
-	io: Option<(ChildStdin, ChildStdout)>,
+	child: Option<Child>,
 }
 
 impl Process {
 	async fn spawn() -> anyhow::Result<Self> {
-		let mut child = std::process::Command::new("./worker")
+		let child = std::process::Command::new("./worker")
 			.stdin(Stdio::piped())
 			.stdout(Stdio::piped())
+			.stderr(Stdio::inherit())
 			.spawn()
 			.context("spawning worker process.\n\nthis is likely because you are trying to run the bot from a checkout of the repo and `worker` is a directory. you can fix this by changing the path to the worker binary to point to the worker binary in the cargo target directory. alternatively, follow the instructions in the README that describe how to set up a standalone installation.")?;
 
-		let stdin = child.stdin.take().unwrap();
-		let stdout = child.stdout.take().unwrap();
-
-		let mut ret = Self {
-			io: Some((stdin, stdout)),
-			child,
-		};
+		let mut ret = Self { child: Some(child) };
 		// Ask for the version and ignore it, as a health check.
 		ret
 			.communicate(Request::Version, None)
@@ -112,10 +106,12 @@ impl Process {
 
 	async fn replace(&mut self) -> anyhow::Result<()> {
 		let new = Self::spawn().await?;
-		let mut old = std::mem::replace(self, new);
+		let old = std::mem::replace(self, new);
 		tokio::task::spawn_blocking(move || {
-			_ = old.child.kill();
-			_ = old.child.wait();
+			if let Some(mut child) = old.child {
+				_ = child.kill();
+				_ = child.wait();
+			}
 		})
 		.await
 		.context("joining kill task")?;
@@ -127,17 +123,16 @@ impl Process {
 		request: Request,
 		progress_channel: Option<mpsc::Sender<String>>,
 	) -> anyhow::Result<Response> {
-		let (mut stdin, mut stdout) = self.io.take().unwrap();
-		let (stdin, stdout, res) = tokio::task::spawn_blocking(move || {
+		let mut child = self.child.take().unwrap();
+		let (child, res) = tokio::task::spawn_blocking(move || {
 			fn inner(
-				stdin: &mut ChildStdin,
-				stdout: &mut ChildStdout,
+				child: &mut Child,
 				request: &Request,
 				progress_channel: &Option<mpsc::Sender<String>>,
 			) -> bincode::Result<Response> {
-				bincode::serialize_into(stdin, &request)?;
+				bincode::serialize_into(child.stdin.as_mut().unwrap(), &request)?;
 				loop {
-					let response: Response = bincode::deserialize_from(&mut *stdout)?;
+					let response: Response = bincode::deserialize_from(child.stdout.as_mut().unwrap())?;
 
 					if let Response::Progress(progress) = response {
 						if let Some(chan) = &progress_channel {
@@ -148,12 +143,12 @@ impl Process {
 					}
 				}
 			}
-			let res = inner(&mut stdin, &mut stdout, &request, &progress_channel);
-			(stdin, stdout, res)
+			let res = inner(&mut child, &request, &progress_channel);
+			(child, res)
 		})
 		.await
 		.context("joining communication task")?;
-		self.io = Some((stdin, stdout));
+		self.child = Some(child);
 		res.context("communicating with worker")
 	}
 }
