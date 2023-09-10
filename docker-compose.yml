@@ -1,0 +1,8 @@
+services:
+  typst-bot:
+    build: .
+    environment:
+      - CACHE_DIRECTORY=/bot/cache
+    env_file: .env
+    container_name: typst-bot
+    restart: always
