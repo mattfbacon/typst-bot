@@ -21,6 +21,17 @@ To set up the working environment, create a directory with the following items:
 
 To run, CD into this directory, set `DISCORD_TOKEN` to your bot token and `CACHE_DIRECTORY` to a suitable location, and run the `bot` binary (not the `worker` binary that's also in the directory).
 
+### Docker
+There is a `Dockerfile` and `docker-compose.yml` for running the Bot inside a Docker container. 
+
+To setup the bot with Docker, simply create a `.env` file:
+```
+DISCORD_TOKEN=YourBotTokenHere
+```
+and run `docker compose up -d`.
+
+> a working installation of docker and docker compose is necessary 
+
 ## License
 
 AGPL. Use `?source` to get a link to the source from deployments of the bot.
