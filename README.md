@@ -28,7 +28,7 @@ To setup the bot with Docker, simply create a `.env` file:
 ```
 DISCORD_TOKEN=YourBotTokenHere
 ```
-and run `docker compose up -d`.
+Running with `docker compose up -d`.
 
 > a working installation of docker and docker compose is necessary 
 
