@@ -3227,6 +3227,7 @@ dependencies = [
  "tar",
  "thiserror",
  "time",
+ "ttf-parser",
  "typst",
  "typst-library",
  "ureq",
