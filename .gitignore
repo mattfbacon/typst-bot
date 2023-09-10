@@ -1,3 +1,6 @@
 /target
 # Used as the package cache during testing.
 /cache
+
+# used in docker and migth contain secrets
+.env
