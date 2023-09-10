@@ -46,9 +46,14 @@ fn fonts() -> Vec<Font> {
 		.unwrap()
 		.map(Result::unwrap)
 		.flat_map(|entry| {
-			let bytes = std::fs::read(entry.path()).unwrap();
+			let path = entry.path();
+			let bytes = std::fs::read(&path).unwrap();
 			let buffer = Bytes::from(bytes);
-			Font::iter(buffer)
+			let face_count = ttf_parser::fonts_in_collection(&buffer).unwrap_or(1);
+			(0..face_count).map(move |face| {
+				Font::new(buffer.clone(), face)
+					.unwrap_or_else(|| panic!("failed to load font from {path:?} (face index {face})"))
+			})
 		})
 		.collect()
 }
