@@ -1,11 +1,11 @@
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use comemo::Prehashed;
 use typst::diag::{FileError, FileResult, PackageError, PackageResult};
-use typst::eval::{Bytes, Library};
+use typst::eval::{eco_format, Bytes, Library};
 use typst::font::{Font, FontBook};
 use typst::syntax::{FileId, PackageSpec, Source};
 
@@ -72,7 +72,7 @@ fn http_successful(status: u16) -> bool {
 }
 
 pub struct WithSource {
-	sandbox: Arc<Sandbox>,
+	sandbox: Rc<Sandbox>,
 	source: Source,
 	time: time::OffsetDateTime,
 }
@@ -94,7 +94,7 @@ impl Sandbox {
 		}
 	}
 
-	pub fn with_source(self: Arc<Self>, source: String) -> WithSource {
+	pub fn with_source(self: Rc<Self>, source: String) -> WithSource {
 		WithSource {
 			sandbox: self,
 			source: make_source(source),
@@ -123,14 +123,23 @@ impl Sandbox {
 			.http
 			.get(&url)
 			.call()
-			.ok()
-			.filter(|response| http_successful(response.status()))
-			.ok_or(PackageError::NetworkFailed)?;
+			.map_err(|error| eco_format!("{error}"))
+			.and_then(|response| {
+				let status = response.status();
+				if http_successful(status) {
+					Ok(response)
+				} else {
+					Err(eco_format!(
+						"response returned unsuccessful status code {status}"
+					))
+				}
+			})
+			.map_err(|error| PackageError::NetworkFailed(Some(error)))?;
 
 		let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(response.into_reader()));
-		archive.unpack(&path).map_err(|_| {
+		archive.unpack(&path).map_err(|error| {
 			_ = std::fs::remove_dir_all(&path);
-			PackageError::MalformedArchive
+			PackageError::MalformedArchive(Some(eco_format!("{error}")))
 		})?;
 
 		Ok(path)
@@ -141,21 +150,23 @@ impl Sandbox {
 			return Ok(entry);
 		}
 
-		if let Some(package) = id.package() {
-			let package_dir = self.ensure_package(package)?;
-			// `FileId::path` is always absolute.
-			let target = id.path().strip_prefix("/").unwrap();
-			let path = package_dir.join(target);
-			let contents = std::fs::read(&path).map_err(|error| FileError::from_io(error, &path))?;
-			return Ok(RefMut::map(self.files.borrow_mut(), |files| {
-				files.entry(id).or_insert(FileEntry {
-					bytes: contents.into(),
-					source: None,
-				})
-			}));
+		'x: {
+			if let Some(package) = id.package() {
+				let package_dir = self.ensure_package(package)?;
+				let Some(path) = id.vpath().resolve(&package_dir) else {
+					break 'x;
+				};
+				let contents = std::fs::read(&path).map_err(|error| FileError::from_io(error, &path))?;
+				return Ok(RefMut::map(self.files.borrow_mut(), |files| {
+					files.entry(id).or_insert(FileEntry {
+						bytes: contents.into(),
+						source: None,
+					})
+				}));
+			}
 		}
 
-		Err(FileError::NotFound(id.path().into()))
+		Err(FileError::NotFound(id.vpath().as_rootless_path().into()))
 	}
 }
 

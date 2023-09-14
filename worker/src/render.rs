@@ -1,7 +1,7 @@
 use std::io::Cursor;
 use std::num::NonZeroUsize;
 use std::ops::Range;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use protocol::Rendered;
 use typst::diag::SourceDiagnostic;
@@ -200,11 +200,10 @@ fn format_diagnostics(source: &Source, diagnostics: &[SourceDiagnostic]) -> Stri
 
 	let mut bytes = Vec::new();
 
-	for diagnostic in diagnostics
-		.iter()
-		.filter(|diagnostic| diagnostic.span.id() == source.id())
-	{
-		let span = source.range(diagnostic.span);
+	for diagnostic in diagnostics {
+		let Some(span) = source.range(diagnostic.span) else {
+			continue;
+		};
 		// We assume that all diagnostics are correctly spanned.
 		let span = byte_span_to_char_span(source_text, span)
 			.expect("invalid byte span reported by typst diagnostic");
@@ -236,7 +235,7 @@ fn to_string(v: impl ToString) -> String {
 	v.to_string()
 }
 
-pub fn render(sandbox: Arc<Sandbox>, source: String) -> Result<Rendered, String> {
+pub fn render(sandbox: Rc<Sandbox>, source: String) -> Result<Rendered, String> {
 	let world = sandbox.with_source(source);
 
 	let mut tracer = Tracer::default();

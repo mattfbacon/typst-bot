@@ -1,6 +1,6 @@
 use std::io::Write as _;
 use std::panic::AssertUnwindSafe;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use protocol::{Request, Response};
 
@@ -34,7 +34,7 @@ fn write_progress(msg: String) {
 }
 
 fn main() {
-	let sandbox = Arc::new(Sandbox::new());
+	let sandbox = Rc::new(Sandbox::new());
 
 	loop {
 		let res = bincode::deserialize_from(std::io::stdin().lock());
@@ -51,7 +51,7 @@ fn main() {
 
 		let response = match request {
 			Request::Render { code } => {
-				let sandbox = Arc::clone(&sandbox);
+				let sandbox = Rc::clone(&sandbox);
 				let response = std::panic::catch_unwind(AssertUnwindSafe(move || render(sandbox, code)));
 				let response = response
 					.map_err(|panic| panic_to_string(&*panic))
