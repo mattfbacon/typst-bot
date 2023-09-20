@@ -171,7 +171,7 @@ impl Sandbox {
 }
 
 impl WithSource {
-	pub fn source(&self) -> &Source {
+	pub fn main_source(&self) -> &Source {
 		&self.source
 	}
 }

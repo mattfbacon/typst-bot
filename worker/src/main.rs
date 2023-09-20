@@ -7,10 +7,9 @@ use protocol::{Request, Response};
 use crate::render::render;
 use crate::sandbox::Sandbox;
 
+mod diagnostic;
 mod render;
 mod sandbox;
-
-const FILE_NAME: &str = "<user input>";
 
 fn panic_to_string(panic: &dyn std::any::Any) -> String {
 	let inner = panic
