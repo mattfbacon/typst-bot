@@ -395,7 +395,7 @@ async fn ast(
 	Ok(())
 }
 
-#[poise::command(prefix_command, track_edits)]
+#[poise::command(prefix_command, slash_command)]
 async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
 	let pool = &ctx.data().pool;
 
