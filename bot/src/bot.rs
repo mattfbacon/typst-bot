@@ -329,7 +329,9 @@ async fn help(
 Type ?help command for more info on a command.
 You can edit your message to the bot and the bot will edit its response.
 Commands prefixed with / can be used as slash commands and prefix commands.
-Commands prefixed with ? can only be used as prefix commands.",
+Commands prefixed with ? can only be used as prefix commands.
+The bot is written by mattf_. Feel free to reach out in the Typst Discord if you have any questions.
+",
 		..Default::default()
 	};
 	poise::builtins::help(ctx, command.as_deref(), config).await?;
