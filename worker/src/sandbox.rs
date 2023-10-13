@@ -145,7 +145,15 @@ impl Sandbox {
 		})
 		.map_err(|error| PackageError::NetworkFailed(Some(error)))?;
 
-		let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(response.into_reader()));
+		let mut compressed_archive = Vec::new();
+		response
+			.into_reader()
+			.read_to_end(&mut compressed_archive)
+			.map_err(|error| PackageError::NetworkFailed(Some(eco_format!("{error}"))))?;
+		let raw_archive = zune_inflate::DeflateDecoder::new(&compressed_archive)
+			.decode_gzip()
+			.map_err(|error| PackageError::MalformedArchive(Some(eco_format!("{error}"))))?;
+		let mut archive = tar::Archive::new(raw_archive.as_slice());
 		archive.unpack(&path).map_err(|error| {
 			_ = std::fs::remove_dir_all(&path);
 			PackageError::MalformedArchive(Some(eco_format!("{error}")))

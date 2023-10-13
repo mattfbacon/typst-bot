@@ -17,7 +17,10 @@ typst = { git = "https://github.com/typst/typst" }
 typst-library = { git = "https://github.com/typst/typst" }
 
 # downloading packages
-flate2 = "1"
+zune-inflate = { version = "0.2", default_features = false, features = [
+	"gzip",
+	"std",
+] }
 tar = "0.4"
 ureq = "2"
 
