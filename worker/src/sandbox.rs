@@ -71,6 +71,14 @@ fn http_successful(status: u16) -> bool {
 	status / 100 == 2
 }
 
+fn retry<T, E>(mut f: impl FnMut() -> Result<T, E>) -> Result<T, E> {
+	if let Ok(ok) = f() {
+		Ok(ok)
+	} else {
+		f()
+	}
+}
+
 pub struct WithSource {
 	sandbox: Rc<Sandbox>,
 	source: Source,
@@ -119,22 +127,23 @@ impl Sandbox {
 			package.namespace, package.name, package.version,
 		);
 
-		let response = self
-			.http
-			.get(&url)
-			.call()
-			.map_err(|error| eco_format!("{error}"))
-			.and_then(|response| {
-				let status = response.status();
-				if http_successful(status) {
-					Ok(response)
-				} else {
-					Err(eco_format!(
-						"response returned unsuccessful status code {status}"
-					))
-				}
-			})
-			.map_err(|error| PackageError::NetworkFailed(Some(error)))?;
+		let response = retry(|| {
+			let response = self
+				.http
+				.get(&url)
+				.call()
+				.map_err(|error| eco_format!("{error}"))?;
+
+			let status = response.status();
+			if !http_successful(status) {
+				return Err(eco_format!(
+					"response returned unsuccessful status code {status}",
+				));
+			}
+
+			Ok(response)
+		})
+		.map_err(|error| PackageError::NetworkFailed(Some(error)))?;
 
 		let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(response.into_reader()));
 		archive.unpack(&path).map_err(|error| {
