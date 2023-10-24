@@ -247,7 +247,7 @@ async fn render(
 
 	let mut progress = String::new();
 	let (progress_send, mut progress_recv) = mpsc::channel(4);
-	let (res, _) = {
+	let (res, ()) = {
 		let mut pool = pool.lock().await;
 		join!(pool.render(source, progress_send), async {
 			// When `render` finishes, it will drop the sender so this loop will finish.

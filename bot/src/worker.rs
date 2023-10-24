@@ -53,10 +53,10 @@ impl Worker {
 								_ = outer.send(progress).await;
 							}
 						}
-						_ = fast_timeout_fut.as_mut() => {
+						() = fast_timeout_fut.as_mut() => {
 							break Err(Timeout);
 						}
-						_ = long_timeout_fut.as_mut() => {
+						() = long_timeout_fut.as_mut() => {
 							break Err(Timeout);
 						}
 					};
