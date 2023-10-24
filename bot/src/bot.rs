@@ -45,9 +45,9 @@ impl FromStr for Theme {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		Ok(match s {
-			"transparent" => Self::Transparent,
-			"light" => Self::Light,
-			"dark" => Self::Dark,
+			"transparent" | "t" => Self::Transparent,
+			"light" | "l" => Self::Light,
+			"dark" | "d" => Self::Dark,
 			_ => return Err(InvalidTheme),
 		})
 	}
@@ -83,9 +83,9 @@ impl FromStr for PageSize {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		Ok(match s {
-			"preview" => Self::Preview,
-			"auto" => Self::Auto,
-			"default" => Self::Default,
+			"preview" | "p" => Self::Preview,
+			"auto" | "a" => Self::Auto,
+			"default" | "d" => Self::Default,
 			_ => return Err(InvalidPageSize),
 		})
 	}
@@ -163,10 +163,10 @@ impl<'a> poise::PopArgument<'a> for RenderFlags {
 
 			for (key, value) in raw {
 				match key.as_str() {
-					"theme" => {
+					"theme" | "t" => {
 						parsed.preamble.theme = value.parse().map_err(|_| "invalid theme")?;
 					}
-					"pagesize" => {
+					"pagesize" | "ps" => {
 						parsed.preamble.page_size = value.parse().map_err(|_| "invalid page size")?;
 					}
 					_ => {
@@ -226,12 +226,14 @@ And some text.
 	)
 }
 
+/// Render Typst code as an image.
 #[poise::command(
 	prefix_command,
 	track_edits,
 	broadcast_typing,
 	user_cooldown = 1,
-	help_text_fn = "render_help"
+	help_text_fn = "render_help",
+	aliases("r")
 )]
 async fn render(
 	ctx: Context<'_>,
@@ -321,7 +323,7 @@ async fn render(
 	Ok(())
 }
 
-/// Show this menu
+/// Show this menu.
 #[poise::command(prefix_command, track_edits, slash_command)]
 async fn help(
 	ctx: Context<'_>,
@@ -398,6 +400,7 @@ async fn ast(
 	Ok(())
 }
 
+/// Show the bot's Typst version.
 #[poise::command(prefix_command, slash_command)]
 async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
 	let pool = &ctx.data().pool;
