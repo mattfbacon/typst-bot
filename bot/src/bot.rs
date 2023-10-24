@@ -83,6 +83,7 @@ impl FromStr for PageSize {
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		Ok(match s {
+			"preview" => Self::Preview,
 			"auto" => Self::Auto,
 			"default" => Self::Default,
 			_ => return Err(InvalidPageSize),
@@ -93,6 +94,7 @@ impl FromStr for PageSize {
 #[derive(Default, Debug, Clone, Copy)]
 enum PageSize {
 	#[default]
+	Preview,
 	Auto,
 	Default,
 }
@@ -100,6 +102,7 @@ enum PageSize {
 impl PageSize {
 	const fn preamble(self) -> &'static str {
 		match self {
+			Self::Preview => "#set page(width: 300pt, height: auto, margin: 10pt)\n",
 			Self::Auto => "#set page(width: auto, height: auto, margin: 10pt)\n",
 			Self::Default => "",
 		}
@@ -195,7 +198,7 @@ Syntax: `?render [pagesize=<page size>] [theme=<theme>] <code block>`
 
 **Flags**
 
-- `pagesize` can be `auto` (default) or `default`.
+- `pagesize` can be `preview` (default),  `auto`, or `default`.
 
 - `theme` can be `dark` (default), `light`, or `transparent`.
 
