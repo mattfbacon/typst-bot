@@ -400,10 +400,6 @@ async fn ast(
 	Ok(())
 }
 
-mod version {
-	include!(concat!(env!("OUT_DIR"), "/version.rs"));
-}
-
 /// Show the bot's Typst version.
 #[poise::command(prefix_command, slash_command)]
 async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
@@ -415,7 +411,7 @@ async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
 		Ok(typst_version) => {
 			let content = format!(
 				"The bot was built from git hash `{}`\nThe bot is using Typst version {}, git hash `{}`",
-				version::sha(),
+				env!("BUILD_SHA"),
 				typst_version.version,
 				typst_version.git_hash,
 			);
