@@ -18,8 +18,11 @@ fn main() {
 		.as_ref()
 		.unwrap()
 		.repr
-		.strip_prefix("git+https://github.com/typst/typst#")
-		.unwrap();
+		.rsplit_once('#')
+		.unwrap()
+		.1;
+	assert_eq!(hash.len(), 40);
+	assert!(hash.chars().all(|ch| matches!(ch, '0'..='9' | 'a'..='f')));
 
 	println!("cargo:rustc-env=TYPST_VERSION={version}");
 	println!("cargo:rustc-env=TYPST_GIT_HASH={hash}");

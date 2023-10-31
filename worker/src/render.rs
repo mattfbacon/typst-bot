@@ -1,10 +1,9 @@
 use std::io::Cursor;
 use std::num::NonZeroUsize;
-use std::rc::Rc;
 
 use protocol::Rendered;
 use typst::eval::Tracer;
-use typst::geom::{Axis, RgbaColor, Size};
+use typst::geom::{Axis, Color, Size};
 
 use crate::diagnostic::format_diagnostics;
 use crate::sandbox::Sandbox;
@@ -50,7 +49,7 @@ fn to_string(v: impl ToString) -> String {
 	v.to_string()
 }
 
-pub fn render(sandbox: Rc<Sandbox>, source: String) -> Result<Rendered, String> {
+pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 	let world = sandbox.with_source(source);
 
 	let mut tracer = Tracer::default();
@@ -63,7 +62,7 @@ pub fn render(sandbox: Rc<Sandbox>, source: String) -> Result<Rendered, String> 
 
 	let pixels_per_point = determine_pixels_per_point(frame.size()).map_err(to_string)?;
 
-	let pixmap = typst::export::render(frame, pixels_per_point, RgbaColor::new(0, 0, 0, 0).into());
+	let pixmap = typst::export::render(frame, pixels_per_point, Color::BLACK);
 
 	let mut writer = Cursor::new(Vec::new());
 

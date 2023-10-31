@@ -1,7 +1,6 @@
 use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::rc::Rc;
 
 use comemo::Prehashed;
 use typst::diag::{FileError, FileResult, PackageError, PackageResult};
@@ -79,8 +78,8 @@ fn retry<T, E>(mut f: impl FnMut() -> Result<T, E>) -> Result<T, E> {
 	}
 }
 
-pub struct WithSource {
-	sandbox: Rc<Sandbox>,
+pub struct WithSource<'a> {
+	sandbox: &'a Sandbox,
 	source: Source,
 	time: time::OffsetDateTime,
 }
@@ -102,7 +101,7 @@ impl Sandbox {
 		}
 	}
 
-	pub fn with_source(self: Rc<Self>, source: String) -> WithSource {
+	pub fn with_source(&self, source: String) -> WithSource<'_> {
 		WithSource {
 			sandbox: self,
 			source: make_source(source),
@@ -187,13 +186,13 @@ impl Sandbox {
 	}
 }
 
-impl WithSource {
+impl WithSource<'_> {
 	pub fn main_source(&self) -> &Source {
 		&self.source
 	}
 }
 
-impl typst::World for WithSource {
+impl typst::World for WithSource<'_> {
 	fn library(&self) -> &Prehashed<Library> {
 		&self.sandbox.library
 	}

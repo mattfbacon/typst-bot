@@ -141,7 +141,7 @@ fn severity_to_report_kind(severity: typst::diag::Severity) -> ariadne::ReportKi
 }
 
 struct SourceCache<'a> {
-	sandbox: &'a WithSource,
+	sandbox: &'a WithSource<'a>,
 	cache: HashMap<FileId, ariadne::Source>,
 }
 
