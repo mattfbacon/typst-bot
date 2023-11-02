@@ -194,7 +194,7 @@ fn render_help() -> String {
 		"\
 Render the given code as an image.
 
-Syntax: `?render [pagesize=<page size>] [theme=<theme>] <code block>`
+Syntax: `?render [pagesize=<page size>] [theme=<theme>] <code block> [...]`
 
 **Flags**
 
@@ -222,8 +222,24 @@ And some text.
 
 #lorem(100)
 ``‌`
+
+?render `#myfunc()` I don't understand this code, can anyone help?
 ```"
 	)
+}
+
+struct Rest;
+
+#[async_trait]
+impl<'a> poise::PopArgument<'a> for Rest {
+	async fn pop_from(
+		_args: &'a str,
+		attachment_index: usize,
+		_ctx: &serenity::prelude::Context,
+		_message: &poise::serenity_prelude::Message,
+	) -> Result<(&'a str, usize, Self), (PoiseError, Option<String>)> {
+		Ok(("", attachment_index, Self))
+	}
 }
 
 /// Render Typst code as an image.
@@ -239,6 +255,7 @@ async fn render(
 	ctx: Context<'_>,
 	#[description = "Flags"] flags: RenderFlags,
 	#[description = "Code to render"] code: poise::prefix_argument::CodeBlock,
+	_ignored: Rest,
 ) -> Result<(), PoiseError> {
 	let pool = &ctx.data().pool;
 
@@ -355,7 +372,7 @@ async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
 
 /// Get the AST for the given code.
 ///
-/// Syntax: `?ast <code block>`
+/// Syntax: `?ast <code block> [...]`
 ///
 /// **Examples**
 ///
@@ -369,11 +386,14 @@ async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
 ///
 /// #lorem(100)
 /// ``‌`
+///
+/// ?ast `#((3): 4)` Interesting parse result here.
 /// ```
 #[poise::command(prefix_command, track_edits, broadcast_typing)]
 async fn ast(
 	ctx: Context<'_>,
 	#[description = "Code to parse"] code: poise::prefix_argument::CodeBlock,
+	_ignored: Rest,
 ) -> Result<(), PoiseError> {
 	let pool = &ctx.data().pool;
 
