@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use poise::async_trait;
 use poise::serenity_prelude::{AttachmentType, GatewayIntents};
+use rusqlite::{named_params, Connection, OpenFlags};
 use tokio::join;
 use tokio::sync::{mpsc, Mutex};
 
@@ -140,6 +141,7 @@ impl Preamble {
 
 struct Data {
 	pool: Mutex<Worker>,
+	database: std::sync::Mutex<Connection>,
 }
 
 type PoiseError = Box<dyn std::error::Error + Send + Sync + 'static>;
@@ -451,11 +453,111 @@ async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
 	Ok(())
 }
 
+struct TagName(String);
+
+#[derive(Debug, thiserror::Error)]
+enum TagNameFromStrError {
+	#[error("tag name too long; max is 20 bytes")]
+	TooLong,
+	#[error("tag name must only contain [a-zA-Z0-9_-]")]
+	BadChar,
+}
+
+impl FromStr for TagName {
+	type Err = TagNameFromStrError;
+
+	fn from_str(raw: &str) -> Result<Self, Self::Err> {
+		if raw.len() > 20 {
+			return Err(TagNameFromStrError::TooLong);
+		}
+
+		let valid_ch = |ch| matches!(ch, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-');
+		if !raw.chars().all(valid_ch) {
+			return Err(TagNameFromStrError::BadChar);
+		}
+
+		Ok(Self(raw.into()))
+	}
+}
+
+/// Print the content of a tag by name.
+///
+/// Note that tags are local to the guild.
+#[poise::command(prefix_command, slash_command, track_edits)]
+async fn tag(
+	ctx: Context<'_>,
+	#[rename = "tag_name"]
+	#[description = "The tag to print"]
+	TagName(tag_name): TagName,
+) -> Result<(), PoiseError> {
+	let database = &ctx.data().database;
+	let text = database
+		.lock()
+		.unwrap()
+		.prepare("select text from tags where name = :name and guild = :guild")?
+		.query(named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().0))?
+		.next()?
+		.map(|row| row.get::<_, String>("text"))
+		.transpose()?;
+	let text = text.unwrap_or_else(|| "That tag is not defined.".into());
+	ctx.say(text).await?;
+	Ok(())
+}
+
+/// Set the content of a tag.
+///
+/// Note that tags are local to the guild.
+#[poise::command(
+	prefix_command,
+	slash_command,
+	rename = "set-tag",
+	track_edits,
+	user_cooldown = 1
+)]
+async fn tag_set(
+	ctx: Context<'_>,
+	#[rename = "tag_name"]
+	#[description = "The tag to define"]
+	TagName(tag_name): TagName,
+	#[rest]
+	#[rename = "tag_text"]
+	#[description = "The text of the tag"]
+	#[max_length = 1000]
+	tag_text: String,
+) -> Result<(), PoiseError> {
+	let database = &ctx.data().database;
+	database.lock().unwrap().execute(
+		"insert into tags (name, guild, text) values (:name, :guild, :text) on conflict do update set text = :text",
+		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().0, ":text": tag_text),
+	)?;
+	ctx
+		.send(|reply| {
+			reply
+				.content(format!("Tag {tag_name:?} updated"))
+				.ephemeral(true)
+		})
+		.await?;
+	Ok(())
+}
+
 pub async fn run() {
+	let database = Connection::open_with_flags(
+		"db.sqlite",
+		OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE,
+	)
+	.unwrap();
+	database.execute("create table if not exists tags (name text not null, guild integer not null, text text not null, unique (name, guild)) strict", []).unwrap();
+	let database = std::sync::Mutex::new(database);
+
 	let pool = Worker::spawn().await.unwrap();
 
 	let edit_tracker_time = std::time::Duration::from_secs(3600);
 
+	let allowed_mentions = {
+		let mut am = serenity::builder::CreateAllowedMentions::default();
+		am.empty_parse();
+		am
+	};
 	let framework = poise::Framework::builder()
 		.options(poise::FrameworkOptions {
 			prefix_options: poise::PrefixFrameworkOptions {
@@ -463,7 +565,16 @@ pub async fn run() {
 				edit_tracker: Some(poise::EditTracker::for_timespan(edit_tracker_time)),
 				..Default::default()
 			},
-			commands: vec![render(), help(), source(), ast(), version()],
+			commands: vec![
+				render(),
+				help(),
+				source(),
+				ast(),
+				version(),
+				tag(),
+				tag_set(),
+			],
+			allowed_mentions: Some(allowed_mentions),
 			..Default::default()
 		})
 		.token(std::env::var("DISCORD_TOKEN").expect("need `DISCORD_TOKEN` env var"))
@@ -473,6 +584,7 @@ pub async fn run() {
 				poise::builtins::register_globally(ctx, &framework.options().commands).await?;
 				Ok(Data {
 					pool: Mutex::new(pool),
+					database,
 				})
 			})
 		});

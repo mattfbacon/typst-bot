@@ -7,7 +7,7 @@ version = "0.1.0"
 anyhow = "1"
 bincode = "1"
 flate2 = "1"
-poise = { version = "0.5", default_features = false, features = [
+poise = { version = "0.5", git = "https://github.com/mattfbacon/poise", branch = "main", default_features = false, features = [
 	"cache",
 	"time",
 ] }
@@ -15,5 +15,6 @@ protocol = { path = "../protocol" }
 serenity = { version = "0.11", default_features = false, features = [
 	"rustls_backend",
 ] }
+rusqlite = { version = "0.29", features = ["bundled"] }
 thiserror = "1"
 tokio = { version = "1", features = ["rt", "macros", "sync"] }

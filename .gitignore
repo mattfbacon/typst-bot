@@ -3,3 +3,4 @@
 /cache
 # Used for docker containers and might contain secrets.
 /.env
+*.sqlite

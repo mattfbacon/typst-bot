@@ -18,6 +18,7 @@ To set up the working environment, create a directory with the following items:
 - `fonts`: Copied from the repo. ~~Make sure you have Git LFS set up so the fonts are downloaded properly.~~ The fonts no longer use LFS due to GitHub's new transfer limits.
 - `worker`: The worker binary, copied/hardlinked from the target directory after building.
 - `bot`: The bot binary, copied/hardlinked from the target directory after building. (This doesn't need to be in this directory, but having everything in one place simplifies things.)
+- `db.sqlite`: You can just `touch` this, but the bot needs to be able to write to it.
 
 To run, CD into this directory, set `DISCORD_TOKEN` to your bot token and `CACHE_DIRECTORY` to a suitable location, and run the `bot` binary (not the `worker` binary that's also in the directory).
 
