@@ -482,6 +482,8 @@ impl FromStr for TagName {
 
 /// Print the content of a tag by name.
 ///
+/// Syntax: `?tag <tag name>`
+///
 /// Note that tags are local to the guild.
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn tag(
@@ -505,6 +507,8 @@ async fn tag(
 }
 
 /// Set the content of a tag.
+///
+/// Syntax: `?set-tag <tag name> <tag text>`
 ///
 /// Note that tags are local to the guild.
 #[poise::command(
