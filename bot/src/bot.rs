@@ -542,7 +542,7 @@ async fn tag_set(
 
 pub async fn run() {
 	let database = Connection::open_with_flags(
-		"db.sqlite",
+		std::env::var_os("DB_PATH").expect("need `DB_PATH` env var"),
 		OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE,
 	)
 	.unwrap();
