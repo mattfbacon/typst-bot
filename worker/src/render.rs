@@ -62,7 +62,8 @@ pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 
 	let pixels_per_point = determine_pixels_per_point(frame.size()).map_err(to_string)?;
 
-	let pixmap = typst::export::render(frame, pixels_per_point, Color::BLACK);
+	let transparent = Color::from_u8(0, 0, 0, 0);
+	let pixmap = typst::export::render(frame, pixels_per_point, transparent);
 
 	let mut writer = Cursor::new(Vec::new());
 
