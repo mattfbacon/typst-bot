@@ -515,7 +515,7 @@ async fn tag(
 	prefix_command,
 	slash_command,
 	rename = "set-tag",
-	track_edits,
+	invoke_on_edit,
 	user_cooldown = 1
 )]
 async fn set_tag(
@@ -536,12 +536,10 @@ async fn set_tag(
 		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().0, ":text": tag_text),
 	)?;
 
+	let author = ctx.author().id;
+	let message = format!("Tag {tag_name:?} updated by <@{author}>: {tag_text}");
 	ctx
-		.send(|reply| {
-			reply
-				.content(format!("Tag {tag_name:?} updated"))
-				.ephemeral(true)
-		})
+		.send(|reply| reply.content(message).reply(true).ephemeral(true))
 		.await?;
 
 	Ok(())
@@ -552,10 +550,9 @@ async fn set_tag(
 /// Syntax: `?delete-tag <tag name>`
 #[poise::command(
 	prefix_command,
-	slash_command,
 	rename = "delete-tag",
  // It doesn't undo deletion, so it's not exactly a purely edit-tracked system, but users still expect this type of behavior.
-	track_edits,
+	invoke_on_edit,
 	user_cooldown = 1
 )]
 async fn delete_tag(
@@ -571,14 +568,14 @@ async fn delete_tag(
 		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().0),
 	)?;
 
-	let content = if num_rows > 0 {
-		format!("Tag {tag_name:?} deleted")
+	let message = if num_rows > 0 {
+		format!("Tag {tag_name:?} deleted by <@{}>", ctx.author().id)
 	} else {
 		format!("Tag {tag_name:?} not found")
 	};
 
 	ctx
-		.send(|reply| reply.content(content).ephemeral(true))
+		.send(|reply| reply.content(message).reply(true).ephemeral(true))
 		.await?;
 
 	Ok(())
