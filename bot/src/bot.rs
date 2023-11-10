@@ -543,6 +543,89 @@ async fn set_tag(
 				.ephemeral(true)
 		})
 		.await?;
+
+	Ok(())
+}
+
+#[poise::command(
+	prefix_command,
+	slash_command,
+	rename = "delete-tag",
+ // It doesn't undo deletion, so it's not exactly a purely edit-tracked system, but users still expect this type of behavior.
+	track_edits,
+	user_cooldown = 1
+)]
+async fn delete_tag(
+	ctx: Context<'_>,
+	#[rename = "tag_name"]
+	#[description = "The tag to delete"]
+	TagName(tag_name): TagName,
+) -> Result<(), PoiseError> {
+	let database = &ctx.data().database;
+
+	let num_rows = database.lock().unwrap().execute(
+		"delete from tags where name = :name and guild = :guild",
+		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().0),
+	)?;
+
+	let content = if num_rows > 0 {
+		format!("Tag {tag_name:?} deleted")
+	} else {
+		format!("Tag {tag_name:?} not found")
+	};
+
+	ctx
+		.send(|reply| reply.content(content).ephemeral(true))
+		.await?;
+
+	Ok(())
+}
+
+/// List all tags.
+///
+/// Syntax: `?tags [filter]`
+///
+/// If `filter` is included, it will only show tags whose names include the given text.
+#[poise::command(prefix_command, slash_command, rename = "tags", track_edits)]
+async fn list_tags(
+	ctx: Context<'_>,
+	#[rename = "filter"]
+	#[description = "Show tags with this in their name"]
+	#[max_length = 20]
+	filter: Option<String>,
+) -> Result<(), PoiseError> {
+	let reply = {
+		let database = &ctx.data().database;
+		let database = database.lock().unwrap();
+		let mut statement = database.prepare(
+			"select name from tags where guild = :guild and (:filter is null or instr(name, :filter) > 0) order by name",
+		)?;
+		let mut results = statement.query_map(
+			named_params!(":filter": filter, ":guild": ctx.guild_id().unwrap().0),
+			|row| row.get::<_, Box<str>>("name"),
+		)?;
+		results.try_fold(String::new(), |mut acc, name| {
+			let name = name?;
+			if !acc.is_empty() {
+				acc += ", ";
+			}
+			write!(acc, "`{name}`").unwrap();
+			Ok::<_, rusqlite::Error>(acc)
+		})?
+	};
+
+	let reply = if reply.is_empty() {
+		if filter.is_some() {
+			"No tags matching that query"
+		} else {
+			"No tags"
+		}
+	} else {
+		&reply
+	};
+
+	ctx.reply(reply).await?;
+
 	Ok(())
 }
 
@@ -579,6 +662,8 @@ pub async fn run() {
 				version(),
 				tag(),
 				set_tag(),
+				delete_tag(),
+				list_tags(),
 			],
 			allowed_mentions: Some(allowed_mentions),
 			..Default::default()
