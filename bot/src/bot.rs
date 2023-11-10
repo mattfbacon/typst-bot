@@ -547,6 +547,9 @@ async fn set_tag(
 	Ok(())
 }
 
+/// Delete a tag.
+///
+/// Syntax: `?delete-tag <tag name>`
 #[poise::command(
 	prefix_command,
 	slash_command,
