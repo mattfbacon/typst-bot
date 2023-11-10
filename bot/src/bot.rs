@@ -518,7 +518,7 @@ async fn tag(
 	track_edits,
 	user_cooldown = 1
 )]
-async fn tag_set(
+async fn set_tag(
 	ctx: Context<'_>,
 	#[rename = "tag_name"]
 	#[description = "The tag to define"]
@@ -530,10 +530,12 @@ async fn tag_set(
 	tag_text: String,
 ) -> Result<(), PoiseError> {
 	let database = &ctx.data().database;
+
 	database.lock().unwrap().execute(
 		"insert into tags (name, guild, text) values (:name, :guild, :text) on conflict do update set text = :text",
 		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().0, ":text": tag_text),
 	)?;
+
 	ctx
 		.send(|reply| {
 			reply
@@ -576,7 +578,7 @@ pub async fn run() {
 				ast(),
 				version(),
 				tag(),
-				tag_set(),
+				set_tag(),
 			],
 			allowed_mentions: Some(allowed_mentions),
 			..Default::default()
