@@ -506,7 +506,7 @@ async fn tag(
 	Ok(())
 }
 
-/// Set the content of a tag.
+/// Set the content of a tag (privileged).
 ///
 /// Syntax: `?set-tag <tag name> <tag text>`
 ///
@@ -516,7 +516,7 @@ async fn tag(
 	slash_command,
 	rename = "set-tag",
 	invoke_on_edit,
-	user_cooldown = 1
+	required_permissions = "KICK_MEMBERS"
 )]
 async fn set_tag(
 	ctx: Context<'_>,
@@ -545,7 +545,7 @@ async fn set_tag(
 	Ok(())
 }
 
-/// Delete a tag.
+/// Delete a tag (privileged).
 ///
 /// Syntax: `?delete-tag <tag name>`
 #[poise::command(
@@ -553,7 +553,7 @@ async fn set_tag(
 	rename = "delete-tag",
  // It doesn't undo deletion, so it's not exactly a purely edit-tracked system, but users still expect this type of behavior.
 	invoke_on_edit,
-	user_cooldown = 1
+	required_permissions = "KICK_MEMBERS"
 )]
 async fn delete_tag(
 	ctx: Context<'_>,
