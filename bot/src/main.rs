@@ -9,7 +9,6 @@
 	nonstandard_style,
 	noop_method_call,
 	pointer_structural_match,
-	private_in_public,
 	rust_2018_idioms,
 	unused_qualifications
 )]
