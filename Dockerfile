@@ -5,7 +5,7 @@ FROM rust:1.72-bullseye AS build
 COPY . /typst-bot
 
 WORKDIR /typst-bot
-RUN cargo build --release --all
+RUN cargo build --release --all --config git-fetch-with-cli=true
 
 
 # ====== Run stage ======
