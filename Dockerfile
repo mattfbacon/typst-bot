@@ -1,25 +1,31 @@
-# Build Stage
-FROM rust:1.72 AS builder
+# ====== Build Stage ======
+FROM rust:1.72-bullseye AS build
 
-RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
-RUN apt-get install git-lfs
-
-RUN git clone https://github.com/mattfbacon/typst-bot
+# Copy all source code into image and compile.
+COPY . /typst-bot
 
 WORKDIR /typst-bot
 RUN cargo build --release --all
 
 
-# Run Stage
-FROM debian as prod
+# ====== Run stage ======
+FROM debian:bullseye-slim
 
-RUN mkdir /bot
+# The only files we need to run the bot are the two executables, the fonts, and a database.
+RUN mkdir -p /bot/cache/ /bot/fonts/ \
+    && touch /bot/db.sqlite
 
-RUN mkdir /bot/cache
-COPY --from=builder /typst-bot/target/release/worker /bot/worker
-COPY --from=builder /typst-bot/target/release/typst-bot /bot/typst-bot
-COPY --from=builder /typst-bot/fonts /bot/fonts
+COPY --from=build \
+    /typst-bot/target/release/worker \
+    /typst-bot/target/release/typst-bot \
+    /bot/
+COPY --from=build /typst-bot/fonts/ \
+    /bot/fonts/
+
+# These variables can get burned into the image without issue. `DISCORD_TOKEN` needs to come from
+# the user or .env, though.
+ENV DB_PATH=/bot/db.sqlite \
+    CACHE_DIRECTORY=/bot/cache
 
 WORKDIR /bot
-ENV CACHE_DIRECTORY=cache
 CMD [ "/bot/typst-bot" ]
