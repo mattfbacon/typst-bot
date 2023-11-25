@@ -7,7 +7,7 @@ version = "0.1.0"
 anyhow = "1"
 bincode = "1"
 flate2 = "1"
-poise = { version = "0.5", git = "https://github.com/mattfbacon/poise", branch = "main", default_features = false, features = [
+poise = { version = "0.5", git = "https://github.com/serenity-rs/poise", rev = "7d41eadaa9a1b0dab5a01c9f0cbc39764e74b5bd", default_features = false, features = [
 	"cache",
 	"time",
 ] }
