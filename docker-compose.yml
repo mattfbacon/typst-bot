@@ -1,8 +1,25 @@
 ---
 
+name: typst-bot
+version: "3.8"
 services:
-    typst-bot:
-        container_name: typst-bot
+    bot:
+        # This service is built using the Dockerfile in the current directory.
         build: .
-        env_file: .env
+        # This service is always restarted if it ever shuts down (unless stopped manually).
         restart: always
+        # The `DISCORD_TOKEN` variable is set within the container to whatever value `DISCORD_TOKEN`
+        # has when Compose is run. It is not saved in the image. Compose will automatically grab its
+        # value from `.env` or the host OS. `?:error` makes it mandatory.
+        environment:
+            - DISCORD_TOKEN=${DISCORD_TOKEN?:error}
+        # The `/bot/sqlite` and `/bot/cache` directories are mapped to volumes.
+        volumes:
+            - sqlite:/bot/sqlite
+            - cache:/bot/cache
+
+# SQLite database for tags and package cache are stored in named volumes managed by Docker. As long
+# as the volumes are kept in between container rebuilds, they won't need to be recreated.
+volumes:
+    sqlite:
+    cache:
