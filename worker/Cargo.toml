@@ -13,9 +13,8 @@ protocol = { path = "../protocol" }
 thiserror = "1"
 time = "0.3"
 ttf-parser = "0.18"
-typst = { git = "https://github.com/typst/typst", rev = "c1bc529986f723f8bb06feedfbdc98520763ceb9" }
-typst-library = { git = "https://github.com/typst/typst", rev = "c1bc529986f723f8bb06feedfbdc98520763ceb9" }
-typst-render = { git = "https://github.com/typst/typst", rev = "c1bc529986f723f8bb06feedfbdc98520763ceb9" }
+typst = { git = "https://github.com/typst/typst", rev = "70ca0d257bb4ba927f63260e20443f244e0bb58c" }
+typst-render = { git = "https://github.com/typst/typst", rev = "70ca0d257bb4ba927f63260e20443f244e0bb58c" }
 
 # downloading packages
 zune-inflate = { version = "0.2", default_features = false, features = [

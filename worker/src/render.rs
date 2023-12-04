@@ -3,7 +3,8 @@ use std::num::NonZeroUsize;
 
 use protocol::Rendered;
 use typst::eval::Tracer;
-use typst::geom::{Axis, Color, Size};
+use typst::layout::{Axis, Size};
+use typst::visualize::Color;
 
 use crate::diagnostic::format_diagnostics;
 use crate::sandbox::Sandbox;

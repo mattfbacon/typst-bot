@@ -3,10 +3,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use comemo::Prehashed;
-use typst::diag::{FileError, FileResult, PackageError, PackageResult};
-use typst::eval::{eco_format, Bytes, Library};
-use typst::font::{Font, FontBook};
+use typst::diag::{eco_format, FileError, FileResult, PackageError, PackageResult};
+use typst::foundations::{Bytes, Datetime};
 use typst::syntax::{FileId, PackageSpec, Source};
+use typst::text::{Font, FontBook};
+use typst::Library;
 
 struct FileEntry {
 	bytes: Bytes,
@@ -89,7 +90,7 @@ impl Sandbox {
 		let fonts = fonts();
 
 		Self {
-			library: Prehashed::new(typst_library::build()),
+			library: Prehashed::new(Library::build()),
 			book: Prehashed::new(FontBook::from_fonts(&fonts)),
 			fonts,
 
@@ -221,11 +222,11 @@ impl typst::World for WithSource<'_> {
 		self.sandbox.file(id).map(|file| file.bytes.clone())
 	}
 
-	fn today(&self, offset: Option<i64>) -> Option<typst::eval::Datetime> {
+	fn today(&self, offset: Option<i64>) -> Option<Datetime> {
 		// We are in UTC.
 		let offset = offset.unwrap_or(0);
 		let offset = time::UtcOffset::from_hms(offset.try_into().ok()?, 0, 0).ok()?;
 		let time = self.time.checked_to_offset(offset)?;
-		Some(typst::eval::Datetime::Date(time.date()))
+		Some(Datetime::Date(time.date()))
 	}
 }
