@@ -453,6 +453,7 @@ async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
 	Ok(())
 }
 
+#[derive(serde::Serialize)]
 struct TagName(String);
 
 #[derive(Debug, thiserror::Error)]
@@ -461,6 +462,12 @@ enum TagNameFromStrError {
 	TooLong,
 	#[error("tag name must only contain [a-zA-Z0-9_-]")]
 	BadChar,
+}
+
+impl Display for TagName {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		self.0.fmt(f)
+	}
 }
 
 impl FromStr for TagName {
@@ -480,6 +487,28 @@ impl FromStr for TagName {
 	}
 }
 
+/// Performs autocomplete of tags, through a "fuzzy" search (matches all tags containing the partial string).
+/// Must be an async function for poise to accept it as a valid autocomplete function.
+/// Can only return up to 25 tags due to a Discord limitation.
+#[allow(clippy::unused_async)]
+async fn tag_autocomplete(ctx: Context<'_>, partial_tag: &str) -> Vec<TagName> {
+	let database = &ctx.data().database;
+
+	database
+		.lock()
+		.unwrap()
+		.prepare("select name from tags where INSTR(name, :name) and guild = :guild limit 25")
+		.and_then(|mut statement|
+			// Convert `Vec<Result<String>>` into `Result<Vec<TagName>>` (abort if one of the rows failed).
+			statement
+			.query_and_then(
+				named_params!(":name": partial_tag, ":guild": ctx.guild_id().unwrap().0),
+				|row| row.get::<_, String>("name")
+			)
+			.and_then(|rows| rows.map(|row| row.map(TagName)).collect::<Result<Vec<_>, _>>()))
+		.unwrap_or_else(|_| Vec::new())
+}
+
 /// Print the content of a tag by name.
 ///
 /// Syntax: `?tag <tag name>`
@@ -490,6 +519,7 @@ async fn tag(
 	ctx: Context<'_>,
 	#[rename = "tag_name"]
 	#[description = "The tag to print"]
+	#[autocomplete = "tag_autocomplete"]
 	TagName(tag_name): TagName,
 ) -> Result<(), PoiseError> {
 	let database = &ctx.data().database;

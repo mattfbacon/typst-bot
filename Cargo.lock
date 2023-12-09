@@ -2703,6 +2703,7 @@ dependencies = [
  "poise",
  "protocol",
  "rusqlite",
+ "serde",
  "serenity",
  "thiserror",
  "tokio",
