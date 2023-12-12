@@ -34,6 +34,10 @@ DISCORD_TOKEN=YourBotTokenHere
 
 and start the container with `docker compose up -d`.
 
+### Public Instance
+
+Here is a link you can use to invite a public instance run by [@frozolotl](https://github.com/frozolotl): https://discord.com/oauth2/authorize?client_id=1183804211264225301&permissions=3072&scope=bot
+
 ## License
 
 AGPL. Use `?source` to get a link to the source from deployments of the bot.
