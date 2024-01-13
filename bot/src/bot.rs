@@ -457,6 +457,7 @@ impl FromStr for TagName {
 		Ok(Self(raw.into()))
 	}
 }
+
 impl From<TagName> for String {
 	fn from(value: TagName) -> Self {
 		value.0
