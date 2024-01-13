@@ -673,7 +673,7 @@ pub async fn run() {
 				delete_tag(),
 				list_tags(),
 			],
-			allowed_mentions: Some(CreateAllowedMentions::new().empty_users().empty_roles()),
+			allowed_mentions: Some(CreateAllowedMentions::new()),
 			..Default::default()
 		})
 		.setup(|ctx, _ready, framework| {
