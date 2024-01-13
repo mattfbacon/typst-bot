@@ -275,21 +275,16 @@ async fn render(
 				progress.reserve(item.len() + 1);
 				progress.push_str(&item);
 				progress.push('\n');
-				_ = ctx
-					.send(CreateReply::default().content(format!(
-						"Progress: ```\n{}\n```",
-						sanitize_code_block(&progress)
-					)))
-					.await;
+				let message = format!("Progress: ```\n{}\n```", sanitize_code_block(&progress));
+				_ = ctx.say(message).await;
 			}
 		})
 	};
 
 	match res {
 		Ok(res) => {
-			let mut reply = CreateReply::default()
-				.attachment(CreateAttachment::bytes(res.image, "rendered.png"))
-				.reply(true);
+			let image = CreateAttachment::bytes(res.image, "rendered.png");
+			let mut message = CreateReply::default().attachment(image).reply(true);
 
 			let mut content = String::new();
 
@@ -304,30 +299,26 @@ async fn render(
 			}
 
 			if !res.warnings.is_empty() {
-				let warnings = sanitize_code_block(&res.warnings);
 				write!(
 					content,
-					"Render succeeded with warnings:\n```\n{warnings}\n```",
+					"Render succeeded with warnings:\n```\n{}\n```",
+					sanitize_code_block(&res.warnings),
 				)
 				.unwrap();
 			}
 
 			if !content.is_empty() {
-				reply = reply.content(content);
+				message = message.content(content);
 			}
 
-			ctx.send(reply).await?;
+			ctx.send(message).await?;
 		}
 		Err(error) => {
-			let error = format!("{error:?}");
-			let error = sanitize_code_block(&error);
-			ctx
-				.send(
-					CreateReply::default()
-						.content(format!("An error occurred:\n```\n{error}\n```"))
-						.reply(true),
-				)
-				.await?;
+			let message = format!(
+				"An error occurred:\n```\n{}\n```",
+				sanitize_code_block(&format!("{error:?}")),
+			);
+			ctx.reply(message).await?;
 		}
 	}
 
@@ -357,14 +348,7 @@ The bot is written by mattf_. Feel free to reach out in the Typst Discord if you
 /// Get a link to the bot's source.
 #[poise::command(prefix_command, slash_command)]
 async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
-	ctx
-		.send(
-			CreateReply::default()
-				.content(format!("<{SOURCE_URL}>"))
-				.reply(true),
-		)
-		.await?;
-
+	ctx.reply(format!("<{SOURCE_URL}>")).await?;
 	Ok(())
 }
 
@@ -399,21 +383,15 @@ async fn ast(
 
 	match res {
 		Ok(ast) => {
-			let ast = sanitize_code_block(&ast);
-			let ast = format!("```{ast}```");
-
-			ctx
-				.send(CreateReply::default().content(ast).reply(true))
-				.await?;
+			let message = format!("```{}```", sanitize_code_block(&ast));
+			ctx.reply(message).await?;
 		}
 		Err(error) => {
-			ctx
-				.send(
-					CreateReply::default()
-						.content(format!("An error occurred:\n```\n{error}```"))
-						.reply(true),
-				)
-				.await?;
+			let message = format!(
+				"An error occurred:\n```\n{}```",
+				sanitize_code_block(&format!("{error:?}")),
+			);
+			ctx.reply(message).await?;
 		}
 	}
 
@@ -429,24 +407,17 @@ async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
 
 	match res {
 		Ok(typst_version) => {
-			let content = format!(
+			let message = format!(
 				"The bot was built from git hash `{}`\nThe bot is using Typst version {}, git hash `{}`",
 				env!("BUILD_SHA"),
 				typst_version.version,
 				typst_version.git_hash,
 			);
-			ctx
-				.send(CreateReply::default().content(content).reply(true))
-				.await?;
+			ctx.reply(message).await?;
 		}
 		Err(error) => {
-			ctx
-				.send(
-					CreateReply::default()
-						.content(format!("An error occurred:\n```\n{error}```"))
-						.reply(true),
-				)
-				.await?;
+			let message = format!("An error occurred:\n```\n{error}```");
+			ctx.reply(message).await?;
 		}
 	}
 
@@ -573,14 +544,11 @@ async fn set_tag(
 
 	let author = ctx.author().id;
 	let message = format!("Tag {tag_name:?} updated by <@{author}>: {tag_text}");
-	ctx
-		.send(
-			CreateReply::default()
-				.content(message)
-				.reply(true)
-				.ephemeral(true),
-		)
-		.await?;
+	let message = CreateReply::default()
+		.content(message)
+		.reply(true)
+		.ephemeral(true);
+	ctx.send(message).await?;
 
 	Ok(())
 }
@@ -614,14 +582,11 @@ async fn delete_tag(
 		format!("Tag {tag_name:?} not found")
 	};
 
-	ctx
-		.send(
-			CreateReply::default()
-				.content(message)
-				.reply(true)
-				.ephemeral(true),
-		)
-		.await?;
+	let message = CreateReply::default()
+		.content(message)
+		.reply(true)
+		.ephemeral(true);
+	ctx.send(message).await?;
 
 	Ok(())
 }
