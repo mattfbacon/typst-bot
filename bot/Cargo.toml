@@ -7,13 +7,12 @@ version = "0.1.0"
 anyhow = "1"
 bincode = "1"
 flate2 = "1"
-poise = { version = "0.5", git = "https://github.com/serenity-rs/poise", rev = "7d41eadaa9a1b0dab5a01c9f0cbc39764e74b5bd", default_features = false, features = [
+poise = { version = "0.6", git = "https://github.com/serenity-rs/poise", default_features = false, features = [
 	"cache",
-	"time",
 ] }
 protocol = { path = "../protocol" }
 serde = { version = "1", features = ["derive"] }
-serenity = { version = "0.11", default_features = false, features = [
+serenity = { version = "0.12", default_features = false, features = [
 	"rustls_backend",
 ] }
 rusqlite = { version = "0.29", features = ["bundled"] }
