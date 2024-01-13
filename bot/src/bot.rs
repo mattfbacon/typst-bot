@@ -2,9 +2,10 @@ use std::collections::HashMap;
 use std::fmt::{Display, Write as _};
 use std::str::FromStr;
 
-use poise::async_trait;
-use poise::serenity_prelude::{AttachmentType, GatewayIntents};
+use poise::serenity_prelude::GatewayIntents;
+use poise::{async_trait, CreateReply};
 use rusqlite::{named_params, Connection, OpenFlags};
+use serenity::builder::{CreateAllowedMentions, CreateAttachment};
 use tokio::join;
 use tokio::sync::{mpsc, Mutex};
 
@@ -274,68 +275,50 @@ async fn render(
 				progress.reserve(item.len() + 1);
 				progress.push_str(&item);
 				progress.push('\n');
-				_ = ctx
-					.send(|reply| {
-						reply.content(format!(
-							"Progress: ```\n{}\n```",
-							sanitize_code_block(&progress)
-						))
-					})
-					.await;
+				let message = format!("Progress: ```\n{}\n```", sanitize_code_block(&progress));
+				_ = ctx.say(message).await;
 			}
 		})
 	};
 
 	match res {
 		Ok(res) => {
-			ctx
-				.send(|reply| {
-					reply
-						.attachment(AttachmentType::Bytes {
-							data: res.image.into(),
-							filename: "rendered.png".into(),
-						})
-						.reply(true);
+			let image = CreateAttachment::bytes(res.image, "rendered.png");
+			let mut message = CreateReply::default().attachment(image).reply(true);
 
-					let mut content = String::new();
+			let mut content = String::new();
 
-					if let Some(more_pages) = res.more_pages {
-						let more_pages = more_pages.get();
-						write!(
-							content,
-							"Note: {more_pages} more page{s} ignored",
-							s = if more_pages == 1 { "" } else { "s" },
-						)
-						.unwrap();
-					}
+			if let Some(more_pages) = res.more_pages {
+				let more_pages = more_pages.get();
+				write!(
+					content,
+					"Note: {more_pages} more page{s} ignored",
+					s = if more_pages == 1 { "" } else { "s" },
+				)
+				.unwrap();
+			}
 
-					if !res.warnings.is_empty() {
-						let warnings = sanitize_code_block(&res.warnings);
-						write!(
-							content,
-							"Render succeeded with warnings:\n```\n{warnings}\n```",
-						)
-						.unwrap();
-					}
+			if !res.warnings.is_empty() {
+				write!(
+					content,
+					"Render succeeded with warnings:\n```\n{}\n```",
+					sanitize_code_block(&res.warnings),
+				)
+				.unwrap();
+			}
 
-					if !content.is_empty() {
-						reply.content(content);
-					}
+			if !content.is_empty() {
+				message = message.content(content);
+			}
 
-					reply
-				})
-				.await?;
+			ctx.send(message).await?;
 		}
 		Err(error) => {
-			let error = format!("{error:?}");
-			let error = sanitize_code_block(&error);
-			ctx
-				.send(|reply| {
-					reply
-						.content(format!("An error occurred:\n```\n{error}\n```"))
-						.reply(true)
-				})
-				.await?;
+			let message = format!(
+				"An error occurred:\n```\n{}\n```",
+				sanitize_code_block(&format!("{error:?}")),
+			);
+			ctx.reply(message).await?;
 		}
 	}
 
@@ -365,10 +348,7 @@ The bot is written by mattf_. Feel free to reach out in the Typst Discord if you
 /// Get a link to the bot's source.
 #[poise::command(prefix_command, slash_command)]
 async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
-	ctx
-		.send(|reply| reply.content(format!("<{SOURCE_URL}>")).reply(true))
-		.await?;
-
+	ctx.reply(format!("<{SOURCE_URL}>")).await?;
 	Ok(())
 }
 
@@ -403,19 +383,15 @@ async fn ast(
 
 	match res {
 		Ok(ast) => {
-			let ast = sanitize_code_block(&ast);
-			let ast = format!("```{ast}```");
-
-			ctx.send(|reply| reply.content(ast).reply(true)).await?;
+			let message = format!("```{}```", sanitize_code_block(&ast));
+			ctx.reply(message).await?;
 		}
 		Err(error) => {
-			ctx
-				.send(|reply| {
-					reply
-						.content(format!("An error occurred:\n```\n{error}```"))
-						.reply(true)
-				})
-				.await?;
+			let message = format!(
+				"An error occurred:\n```\n{}```",
+				sanitize_code_block(&format!("{error:?}")),
+			);
+			ctx.reply(message).await?;
 		}
 	}
 
@@ -431,22 +407,17 @@ async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
 
 	match res {
 		Ok(typst_version) => {
-			let content = format!(
+			let message = format!(
 				"The bot was built from git hash `{}`\nThe bot is using Typst version {}, git hash `{}`",
 				env!("BUILD_SHA"),
 				typst_version.version,
 				typst_version.git_hash,
 			);
-			ctx.send(|reply| reply.content(content).reply(true)).await?;
+			ctx.reply(message).await?;
 		}
 		Err(error) => {
-			ctx
-				.send(|reply| {
-					reply
-						.content(format!("An error occurred:\n```\n{error}```"))
-						.reply(true)
-				})
-				.await?;
+			let message = format!("An error occurred:\n```\n{error}```");
+			ctx.reply(message).await?;
 		}
 	}
 
@@ -487,6 +458,12 @@ impl FromStr for TagName {
 	}
 }
 
+impl From<TagName> for String {
+	fn from(value: TagName) -> Self {
+		value.0
+	}
+}
+
 /// Performs autocomplete of tags, through a "fuzzy" search (matches all tags containing the partial string).
 /// Must be an async function for poise to accept it as a valid autocomplete function.
 /// Can only return up to 25 tags due to a Discord limitation.
@@ -502,7 +479,7 @@ async fn tag_autocomplete(ctx: Context<'_>, partial_tag: &str) -> Vec<TagName> {
 			// Convert `Vec<Result<String>>` into `Result<Vec<TagName>>` (abort if one of the rows failed).
 			statement
 			.query_and_then(
-				named_params!(":name": partial_tag, ":guild": ctx.guild_id().unwrap().0),
+				named_params!(":name": partial_tag, ":guild": ctx.guild_id().unwrap().get()),
 				|row| row.get::<_, String>("name")
 			)
 			.and_then(|rows| rows.map(|row| row.map(TagName)).collect::<Result<Vec<_>, _>>()))
@@ -527,7 +504,7 @@ async fn tag(
 		.lock()
 		.unwrap()
 		.prepare("select text from tags where name = :name and guild = :guild")?
-		.query(named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().0))?
+		.query(named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().get()))?
 		.next()?
 		.map(|row| row.get::<_, String>("text"))
 		.transpose()?;
@@ -563,14 +540,16 @@ async fn set_tag(
 
 	database.lock().unwrap().execute(
 		"insert into tags (name, guild, text) values (:name, :guild, :text) on conflict do update set text = :text",
-		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().0, ":text": tag_text),
+		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().get(), ":text": tag_text),
 	)?;
 
 	let author = ctx.author().id;
 	let message = format!("Tag {tag_name:?} updated by <@{author}>: {tag_text}");
-	ctx
-		.send(|reply| reply.content(message).reply(true).ephemeral(true))
-		.await?;
+	let message = CreateReply::default()
+		.content(message)
+		.reply(true)
+		.ephemeral(true);
+	ctx.send(message).await?;
 
 	Ok(())
 }
@@ -595,7 +574,7 @@ async fn delete_tag(
 
 	let num_rows = database.lock().unwrap().execute(
 		"delete from tags where name = :name and guild = :guild",
-		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().0),
+		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().get()),
 	)?;
 
 	let message = if num_rows > 0 {
@@ -604,9 +583,11 @@ async fn delete_tag(
 		format!("Tag {tag_name:?} not found")
 	};
 
-	ctx
-		.send(|reply| reply.content(message).reply(true).ephemeral(true))
-		.await?;
+	let message = CreateReply::default()
+		.content(message)
+		.reply(true)
+		.ephemeral(true);
+	ctx.send(message).await?;
 
 	Ok(())
 }
@@ -631,7 +612,7 @@ async fn list_tags(
 			"select name from tags where guild = :guild and (:filter is null or instr(name, :filter) > 0) order by name",
 		)?;
 		let mut results = statement.query_map(
-			named_params!(":filter": filter, ":guild": ctx.guild_id().unwrap().0),
+			named_params!(":filter": filter, ":guild": ctx.guild_id().unwrap().get()),
 			|row| row.get::<_, Box<str>>("name"),
 		)?;
 		results.try_fold(String::new(), |mut acc, name| {
@@ -672,16 +653,13 @@ pub async fn run() {
 
 	let edit_tracker_time = std::time::Duration::from_secs(3600);
 
-	let allowed_mentions = {
-		let mut am = serenity::builder::CreateAllowedMentions::default();
-		am.empty_parse();
-		am
-	};
+	let token = std::env::var("DISCORD_TOKEN").expect("need `DISCORD_TOKEN` env var");
+	let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
 	let framework = poise::Framework::builder()
 		.options(poise::FrameworkOptions {
 			prefix_options: poise::PrefixFrameworkOptions {
 				prefix: Some("?".to_owned()),
-				edit_tracker: Some(poise::EditTracker::for_timespan(edit_tracker_time)),
+				edit_tracker: Some(poise::EditTracker::for_timespan(edit_tracker_time).into()),
 				..Default::default()
 			},
 			commands: vec![
@@ -695,11 +673,9 @@ pub async fn run() {
 				delete_tag(),
 				list_tags(),
 			],
-			allowed_mentions: Some(allowed_mentions),
+			allowed_mentions: Some(CreateAllowedMentions::new()),
 			..Default::default()
 		})
-		.token(std::env::var("DISCORD_TOKEN").expect("need `DISCORD_TOKEN` env var"))
-		.intents(GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT)
 		.setup(|ctx, _ready, framework| {
 			Box::pin(async move {
 				poise::builtins::register_globally(ctx, &framework.options().commands).await?;
@@ -708,9 +684,15 @@ pub async fn run() {
 					database,
 				})
 			})
-		});
+		})
+		.build();
+
+	let mut client = serenity::client::ClientBuilder::new(token, intents)
+		.framework(framework)
+		.await
+		.unwrap();
 
 	eprintln!("ready");
 
-	framework.run().await.unwrap();
+	client.start().await.unwrap();
 }

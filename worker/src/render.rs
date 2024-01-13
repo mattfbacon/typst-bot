@@ -58,7 +58,10 @@ pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 		typst::compile(&world, &mut tracer).map_err(|diags| format_diagnostics(&world, &diags))?;
 	let warnings = tracer.warnings();
 
-	let frame = &document.pages.get(0).ok_or("no pages in rendered output")?;
+	let frame = &document
+		.pages
+		.first()
+		.ok_or("no pages in rendered output")?;
 	let more_pages = NonZeroUsize::new(document.pages.len().saturating_sub(1));
 
 	let pixels_per_point = determine_pixels_per_point(frame.size()).map_err(to_string)?;
