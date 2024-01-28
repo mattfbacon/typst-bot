@@ -226,7 +226,7 @@ pub fn format_diagnostics(sandbox: &WithSource, diagnostics: &[SourceDiagnostic]
 		let report_pos = span.map_or(0, |span| span.char_span_start);
 
 		let mut report = Report::build(report_kind, source_id, report_pos)
-			.with_config(Config::default().with_tab_width(2).with_color(false))
+			.with_config(Config::default().with_tab_width(2).with_color(true))
 			.with_message(&diagnostic.message);
 
 		if let Some(span) = span {

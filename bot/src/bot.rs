@@ -302,7 +302,7 @@ async fn render(
 				progress.reserve(item.len() + 1);
 				progress.push_str(&item);
 				progress.push('\n');
-				let message = format!("Progress: ```\n{}\n```", sanitize_code_block(&progress));
+				let message = format!("Progress: ```ansi\n{}\n```", sanitize_code_block(&progress));
 				_ = ctx.say(message).await;
 			}
 		})
@@ -328,7 +328,7 @@ async fn render(
 			if !res.warnings.is_empty() {
 				write!(
 					content,
-					"Render succeeded with warnings:\n```\n{}\n```",
+					"Render succeeded with warnings:\n```ansi\n{}\n```",
 					sanitize_code_block(&res.warnings),
 				)
 				.unwrap();
@@ -342,7 +342,7 @@ async fn render(
 		}
 		Err(error) => {
 			let message = format!(
-				"An error occurred:\n```\n{}\n```",
+				"An error occurred:\n```ansi\n{}\n```",
 				sanitize_code_block(&format!("{error:?}")),
 			);
 			ctx.reply(message).await?;
@@ -410,12 +410,12 @@ async fn ast(
 
 	match res {
 		Ok(ast) => {
-			let message = format!("```{}```", sanitize_code_block(&ast));
+			let message = format!("```ansi\n{}```", sanitize_code_block(&ast));
 			ctx.reply(message).await?;
 		}
 		Err(error) => {
 			let message = format!(
-				"An error occurred:\n```\n{}```",
+				"An error occurred:\n```ansi\n{}```",
 				sanitize_code_block(&format!("{error:?}")),
 			);
 			ctx.reply(message).await?;
@@ -443,7 +443,7 @@ async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
 			ctx.reply(message).await?;
 		}
 		Err(error) => {
-			let message = format!("An error occurred:\n```\n{error}```");
+			let message = format!("An error occurred:\n```ansi\n{error}```");
 			ctx.reply(message).await?;
 		}
 	}
