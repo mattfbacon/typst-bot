@@ -640,6 +640,28 @@ async fn list_tags(
 	Ok(())
 }
 
+async fn handle_error(
+	error: poise::FrameworkError<'_, Data, Box<dyn std::error::Error + Send + Sync>>,
+) -> serenity::Result<()> {
+	if let poise::FrameworkError::ArgumentParse {
+		ctx, input, error, ..
+	} = error
+	{
+		let name = &ctx.command().name;
+		let usage = format!(
+			"Use `?help {name}` for usage. Feel free to edit or delete your message and the bot will react.",
+		);
+		let response = input.map_or_else(
+			|| format!("**{error}**\n{usage}"),
+			|input| format!("**Cannot parse `{input}` as argument: {error}**\n{usage}"),
+		);
+		ctx.reply(response).await?;
+		Ok(())
+	} else {
+		poise::builtins::on_error(error).await
+	}
+}
+
 pub async fn run() {
 	let database = Connection::open_with_flags(
 		std::env::var_os("DB_PATH").expect("need `DB_PATH` env var"),
@@ -674,6 +696,13 @@ pub async fn run() {
 				list_tags(),
 			],
 			allowed_mentions: Some(CreateAllowedMentions::new()),
+			on_error: |error| {
+				Box::pin(async move {
+					if let Err(error) = handle_error(error).await {
+						tracing::error!(?error, "Error while handling error");
+					}
+				})
+			},
 			..Default::default()
 		})
 		.setup(|ctx, _ready, framework| {
