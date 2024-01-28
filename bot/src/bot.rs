@@ -258,7 +258,7 @@ impl<'a> poise::PopArgument<'a> for CodeBlock {
 			source = strip_ansi_escapes::strip_str(source);
 		}
 
-		// Remove all occurences of the ZWJ when used if surrounded by backticks.
+		// Remove all occurences of zero width joiners surrounded by backticks.
 		// This is used to enter Typst code blocks within Discord-markdown code blocks.
 		// Two replace calls are needed to remove all patterns of `ABA`: ABABABA => AABAA => AAAA.
 		let pattern = format!("`{ZERO_WIDTH_JOINER}`");
