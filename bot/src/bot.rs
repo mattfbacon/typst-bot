@@ -12,10 +12,11 @@ use tokio::sync::{mpsc, Mutex};
 use crate::worker::Worker;
 use crate::SOURCE_URL;
 
-/// Prevent garbled output from codeblocks unwittingly terminated by their own content.
-///
-/// U+200C is a zero-width non-joiner.
+/// U+200D is a zero-width joiner.
 /// It prevents the triple backtick from being interpreted as a codeblock but retains ligature support.
+const ZERO_WIDTH_JOINER: char = '\u{200D}';
+
+/// Prevent garbled output from codeblocks unwittingly terminated by their own content.
 fn sanitize_code_block(raw: &str) -> impl Display + '_ {
 	struct Helper<'a>(&'a str);
 
@@ -27,7 +28,7 @@ fn sanitize_code_block(raw: &str) -> impl Display + '_ {
 					.map_or((section, false), |safe| (safe, true));
 				formatter.write_str(safe)?;
 				if should_append {
-					formatter.write_str("``\u{200c}`")?;
+					write!(formatter, "``{ZERO_WIDTH_JOINER}`")?;
 				}
 			}
 
@@ -218,13 +219,13 @@ To remove the preamble entirely, use `pagesize=default theme=transparent`.
 ```
 ?render `hello, world!`
 
-?render pagesize=default theme=light ``‌`
+?render pagesize=default theme=light ``‍`
 = Heading!
 
 And some text.
 
 #lorem(100)
-``‌`
+``‍`
 
 ?render `#myfunc()` I don't understand this code, can anyone help?
 ```"
@@ -254,6 +255,16 @@ impl<'a> poise::PopArgument<'a> for CodeBlock {
 		if code_block.language.as_deref() == Some("ansi") {
 			source = strip_ansi_escapes::strip_str(source);
 		}
+
+		// Remove all occurrences of zero width joiners surrounded by backticks.
+		// This is used to enter Typst code blocks within Discord-markdown code blocks.
+		// Two replace calls are needed to remove all patterns of `ABA`: ABABABA => AABAA => AAAA.
+		let pattern = format!("`{ZERO_WIDTH_JOINER}`");
+		let replacement = "``";
+		source = source
+			.replace(&pattern, replacement)
+			.replace(&pattern, replacement);
+
 		Ok((rest, attachment_index, CodeBlock { source }))
 	}
 }
@@ -388,13 +399,13 @@ async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
 /// ```
 /// ?ast `hello, world!`
 ///
-/// ?ast ``‌`
+/// ?ast ``‍`
 /// = Heading!
 ///
 /// And some text.
 ///
 /// #lorem(100)
-/// ``‌`
+/// ``‍`
 ///
 /// ?ast `#((3): 4)` Interesting parse result here.
 /// ```
