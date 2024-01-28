@@ -28,9 +28,7 @@ fn sanitize_code_block(raw: &str) -> impl Display + '_ {
 					.map_or((section, false), |safe| (safe, true));
 				formatter.write_str(safe)?;
 				if should_append {
-					formatter.write_str("``")?;
-					formatter.write_char(ZERO_WIDTH_JOINER)?;
-					formatter.write_str("`")?;
+					write!(formatter, "``{ZERO_WIDTH_JOINER}`")?;
 				}
 			}
 
@@ -221,13 +219,13 @@ To remove the preamble entirely, use `pagesize=default theme=transparent`.
 ```
 ?render `hello, world!`
 
-?render pagesize=default theme=light ``‌`
+?render pagesize=default theme=light ``‍`
 = Heading!
 
 And some text.
 
 #lorem(100)
-``‌`
+``‍`
 
 ?render `#myfunc()` I don't understand this code, can anyone help?
 ```"
@@ -258,7 +256,7 @@ impl<'a> poise::PopArgument<'a> for CodeBlock {
 			source = strip_ansi_escapes::strip_str(source);
 		}
 
-		// Remove all occurences of the ZWJ when used if surrounded by backticks.
+		// Remove all occurrences of the ZWJ when used if surrounded by backticks.
 		// This is used to enter Typst code blocks within Discord-markdown code blocks.
 		// Two replace calls are needed to remove all patterns of `ABA`: ABABABA => AABAA => AAAA.
 		let pattern = format!("`{ZERO_WIDTH_JOINER}`");
@@ -401,13 +399,13 @@ async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
 /// ```
 /// ?ast `hello, world!`
 ///
-/// ?ast ``‌`
+/// ?ast ``‍`
 /// = Heading!
 ///
 /// And some text.
 ///
 /// #lorem(100)
-/// ``‌`
+/// ``‍`
 ///
 /// ?ast `#((3): 4)` Interesting parse result here.
 /// ```
