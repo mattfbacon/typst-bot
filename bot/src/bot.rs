@@ -231,6 +231,33 @@ And some text.
 	)
 }
 
+/// Extracts the contents of a code block.
+///
+/// If the language is `ansi`, then ANSI escape codes will be stripped from the input.
+struct CodeBlock {
+	source: String,
+}
+
+#[async_trait]
+impl<'a> poise::PopArgument<'a> for CodeBlock {
+	async fn pop_from(
+		args: &'a str,
+		attachment_index: usize,
+		ctx: &serenity::prelude::Context,
+		message: &poise::serenity_prelude::Message,
+	) -> Result<(&'a str, usize, Self), (PoiseError, Option<String>)> {
+		let (rest, attachment_index, code_block) =
+			poise::prefix_argument::CodeBlock::pop_from(args, attachment_index, ctx, message).await?;
+
+		let mut source = code_block.code;
+		// Strip ANSI escapes if provided.
+		if code_block.language.as_deref() == Some("ansi") {
+			source = strip_ansi_escapes::strip_str(source);
+		}
+		Ok((rest, attachment_index, CodeBlock { source }))
+	}
+}
+
 struct Rest;
 
 #[async_trait]
@@ -257,12 +284,12 @@ impl<'a> poise::PopArgument<'a> for Rest {
 async fn render(
 	ctx: Context<'_>,
 	#[description = "Flags"] flags: RenderFlags,
-	#[description = "Code to render"] code: poise::prefix_argument::CodeBlock,
+	#[description = "Code to render"] code: CodeBlock,
 	_ignored: Rest,
 ) -> Result<(), PoiseError> {
 	let pool = &ctx.data().pool;
 
-	let mut source = code.code;
+	let mut source = code.source;
 	source.insert_str(0, &flags.preamble.preamble());
 
 	let mut progress = String::new();
@@ -374,12 +401,12 @@ async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
 #[poise::command(prefix_command, track_edits, broadcast_typing)]
 async fn ast(
 	ctx: Context<'_>,
-	#[description = "Code to parse"] code: poise::prefix_argument::CodeBlock,
+	#[description = "Code to parse"] code: CodeBlock,
 	_ignored: Rest,
 ) -> Result<(), PoiseError> {
 	let pool = &ctx.data().pool;
 
-	let res = pool.lock().await.ast(code.code).await;
+	let res = pool.lock().await.ast(code.source).await;
 
 	match res {
 		Ok(ast) => {
