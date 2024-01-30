@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::io::Write as _;
 use std::ops::Range;
 
 use ariadne::{Cache, Config, Label, Report};
@@ -198,12 +199,15 @@ impl ariadne::Span for Span {
 	}
 }
 
+const MAX_LEN: usize = 1950;
+
 pub fn format_diagnostics(sandbox: &WithSource, diagnostics: &[SourceDiagnostic]) -> String {
 	let mut cache = SourceCache::new(sandbox);
 
 	let mut bytes = Vec::new();
 
-	for diagnostic in diagnostics {
+	let mut diagnostics = diagnostics.into_iter();
+	while let Some(diagnostic) = diagnostics.next() {
 		let typst_span = diagnostic.span;
 		let span = typst_span.id().map(|file_id| {
 			let source = sandbox
@@ -226,7 +230,7 @@ pub fn format_diagnostics(sandbox: &WithSource, diagnostics: &[SourceDiagnostic]
 		let report_pos = span.map_or(0, |span| span.char_span_start);
 
 		let mut report = Report::build(report_kind, source_id, report_pos)
-			.with_config(Config::default().with_tab_width(2).with_color(true))
+			.with_config(Config::default().with_tab_width(2).with_color(false))
 			.with_message(&diagnostic.message);
 
 		if let Some(span) = span {
@@ -239,10 +243,19 @@ pub fn format_diagnostics(sandbox: &WithSource, diagnostics: &[SourceDiagnostic]
 
 		let report = report.finish();
 
+		let checkpoint = bytes.len();
 		// The unwrap will never fail since `Vec`'s `Write` implementation is infallible.
 		report.write(&mut cache, &mut bytes).unwrap();
 
 		bytes.push(b'\n');
+
+		if bytes.len() > MAX_LEN {
+			bytes.truncate(checkpoint);
+			let more = 1 + diagnostics.count();
+			let s = if more == 1 { "" } else { "s" };
+			write!(bytes, "{more} more diagnostic{} omitted", s).unwrap();
+			break;
+		}
 	}
 
 	// Remove extra spacing newline.
