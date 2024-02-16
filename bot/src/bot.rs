@@ -296,7 +296,9 @@ async fn render(
 	ctx: Context<'_>,
 	#[description = "Flags"] flags: RenderFlags,
 	#[description = "Code to render"] code: CodeBlock,
-	_ignored: Rest,
+	#[rename = "rest"]
+	#[description = "Extra message content"]
+	_: Rest,
 ) -> Result<(), PoiseError> {
 	let pool = &ctx.data().pool;
 
@@ -413,7 +415,9 @@ async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
 async fn ast(
 	ctx: Context<'_>,
 	#[description = "Code to parse"] code: CodeBlock,
-	_ignored: Rest,
+	#[rename = "rest"]
+	#[description = "Extra message content"]
+	_: Rest,
 ) -> Result<(), PoiseError> {
 	let pool = &ctx.data().pool;
 
