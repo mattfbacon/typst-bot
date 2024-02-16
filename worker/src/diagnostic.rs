@@ -214,8 +214,12 @@ pub fn format_diagnostics(sandbox: &WithSource, diagnostics: &[SourceDiagnostic]
 				.source(file_id)
 				.expect("invalid file ID in diagnostic span");
 			let byte_span = source.range(typst_span).unwrap();
-			let char_span = byte_span_to_char_span(source.text(), byte_span)
+			let mut char_span = byte_span_to_char_span(source.text(), byte_span)
 				.expect("invalid byte span reported by typst diagnostic");
+			// Avoid empty spans.
+			if char_span.end == char_span.start {
+				char_span.end += 1;
+			}
 			Span {
 				file_id,
 				char_span_start: char_span.start,
