@@ -601,6 +601,7 @@ async fn set_tag(
 /// Syntax: `?delete-tag <tag name>`
 #[poise::command(
 	prefix_command,
+	slash_command,
 	rename = "delete-tag",
  // It doesn't undo deletion, so it's not exactly a purely edit-tracked system, but users still expect this type of behavior.
 	invoke_on_edit,
