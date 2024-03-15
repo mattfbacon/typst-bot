@@ -7,14 +7,14 @@ version = "0.1.0"
 ariadne = { version = "0.3", default_features = false }
 bincode = "1"
 bytemuck = "1"
-comemo = "0.3"
+comemo = "0.4"
 image = { version = "0.24", default_features = false, features = ["png"] }
 protocol = { path = "../protocol" }
 thiserror = "1"
 time = "0.3"
 ttf-parser = "0.18"
-typst = { git = "https://github.com/typst/typst", rev = "70ca0d257bb4ba927f63260e20443f244e0bb58c" }
-typst-render = { git = "https://github.com/typst/typst", rev = "70ca0d257bb4ba927f63260e20443f244e0bb58c" }
+typst = { git = "https://github.com/typst/typst", rev = "2bf9f95dd83f2ceef1e32ae1847a162c7d193f76" }
+typst-render = { git = "https://github.com/typst/typst", rev = "2bf9f95dd83f2ceef1e32ae1847a162c7d193f76" }
 
 # downloading packages
 zune-inflate = { version = "0.2", default_features = false, features = [

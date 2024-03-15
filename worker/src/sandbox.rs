@@ -5,9 +5,10 @@ use std::path::PathBuf;
 use comemo::Prehashed;
 use typst::diag::{eco_format, FileError, FileResult, PackageError, PackageResult};
 use typst::foundations::{Bytes, Datetime};
-use typst::syntax::{FileId, PackageSpec, Source};
-use typst::text::{Font, FontBook};
 use typst::Library;
+use typst::syntax::{FileId, Source};
+use typst::syntax::package::PackageSpec;
+use typst::text::{Font, FontBook};
 
 struct FileEntry {
 	bytes: Bytes,
@@ -90,7 +91,7 @@ impl Sandbox {
 		let fonts = fonts();
 
 		Self {
-			library: Prehashed::new(Library::build()),
+			library: Prehashed::new(Library::default()),
 			book: Prehashed::new(FontBook::from_fonts(&fonts)),
 			fonts,
 

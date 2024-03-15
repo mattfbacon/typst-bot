@@ -61,7 +61,8 @@ pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 	let frame = &document
 		.pages
 		.first()
-		.ok_or("no pages in rendered output")?;
+		.ok_or("no pages in rendered output")?
+		.frame;
 	let more_pages = NonZeroUsize::new(document.pages.len().saturating_sub(1));
 
 	let pixels_per_point = determine_pixels_per_point(frame.size()).map_err(to_string)?;
