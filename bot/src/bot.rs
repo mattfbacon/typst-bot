@@ -4,6 +4,7 @@ use std::str::FromStr;
 
 use poise::serenity_prelude::GatewayIntents;
 use poise::{async_trait, CreateReply};
+use protocol::VersionResponse;
 use rusqlite::{named_params, Connection, OpenFlags};
 use serenity::builder::{CreateAllowedMentions, CreateAttachment};
 use tokio::join;
@@ -448,13 +449,15 @@ async fn version(ctx: Context<'_>) -> Result<(), PoiseError> {
 	let res = pool.lock().await.version().await;
 
 	match res {
-		Ok(typst_version) => {
-			let message = format!(
-				"The bot was built from git hash `{}`\nThe bot is using Typst version {}, git hash `{}`",
-				env!("BUILD_SHA"),
-				typst_version.version,
-				typst_version.git_hash,
-			);
+		Ok(VersionResponse {
+			git_hash: typst_hash,
+			version: typst_version,
+		}) => {
+			let bot_hash = env!("BUILD_SHA");
+			let message = format!("\
+The bot was built from git hash [`{bot_hash}`](<https://github.com/mattfbacon/typst-bot/tree/{bot_hash}>)
+The bot is using Typst version **{typst_version}**, git hash [`{typst_hash}`](<https://github.com/typst/typst/tree/{typst_hash}>)\
+");
 			ctx.reply(message).await?;
 		}
 		Err(error) => {
