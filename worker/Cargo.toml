@@ -4,17 +4,17 @@ name = "worker"
 version = "0.1.0"
 
 [dependencies]
-ariadne = { version = "0.3", default_features = false }
+ariadne = { version = "0.4", default_features = false }
 bincode = "1"
 bytemuck = "1"
-comemo = "0.3"
-image = { version = "0.24", default_features = false, features = ["png"] }
+comemo = "0.4"
+image = { version = "0.25", default_features = false, features = ["png"] }
 protocol = { path = "../protocol" }
 thiserror = "1"
 time = "0.3"
-ttf-parser = "0.18"
-typst = { git = "https://github.com/typst/typst", rev = "70ca0d257bb4ba927f63260e20443f244e0bb58c" }
-typst-render = { git = "https://github.com/typst/typst", rev = "70ca0d257bb4ba927f63260e20443f244e0bb58c" }
+ttf-parser = "0.20"
+typst = { git = "https://github.com/typst/typst", rev = "v0.11.0" }
+typst-render = { git = "https://github.com/typst/typst", rev = "v0.11.0" }
 
 # downloading packages
 zune-inflate = { version = "0.2", default_features = false, features = [
@@ -25,4 +25,4 @@ tar = "0.4"
 ureq = "2"
 
 [build-dependencies]
-cargo_metadata = "0.15"
+cargo_metadata = "0.18"

@@ -156,6 +156,8 @@ impl<'a> SourceCache<'a> {
 }
 
 impl Cache<FileId> for SourceCache<'_> {
+	type Storage = String;
+
 	fn fetch(&mut self, id: &FileId) -> Result<&ariadne::Source, Box<dyn std::fmt::Debug + '_>> {
 		let source = match self.cache.entry(*id) {
 			Entry::Occupied(entry) => entry.into_mut(),
@@ -164,7 +166,7 @@ impl Cache<FileId> for SourceCache<'_> {
 					.sandbox
 					.source(*id)
 					.map_err(|error| Box::new(error) as Box<dyn std::fmt::Debug>)?;
-				let source = ariadne::Source::from(source.text());
+				let source = ariadne::Source::from(source.text().to_owned());
 				entry.insert(source)
 			}
 		};
@@ -206,7 +208,7 @@ pub fn format_diagnostics(sandbox: &WithSource, diagnostics: &[SourceDiagnostic]
 
 	let mut bytes = Vec::new();
 
-	let mut diagnostics = diagnostics.into_iter();
+	let mut diagnostics = diagnostics.iter();
 	while let Some(diagnostic) = diagnostics.next() {
 		let typst_span = diagnostic.span;
 		let span = typst_span.id().map(|file_id| {
