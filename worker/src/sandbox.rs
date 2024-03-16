@@ -91,7 +91,7 @@ impl Sandbox {
 		let fonts = fonts();
 
 		Self {
-			library: Prehashed::new(Library::builder().build()),
+			library: Prehashed::new(Library::default()),
 			book: Prehashed::new(FontBook::from_fonts(&fonts)),
 			fonts,
 
