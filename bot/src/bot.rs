@@ -515,16 +515,21 @@ impl From<TagName> for String {
 #[allow(clippy::unused_async)]
 async fn tag_autocomplete(ctx: Context<'_>, partial_tag: &str) -> Vec<TagName> {
 	let database = &ctx.data().database;
+	let Ok(database) = database.lock() else {
+		return Vec::new();
+	};
+
+	let Some(guild_id) = ctx.guild_id() else {
+		return Vec::new();
+	};
 
 	database
-		.lock()
-		.unwrap()
 		.prepare("select name from tags where INSTR(name, :name) and guild = :guild limit 25")
 		.and_then(|mut statement|
 			// Convert `Vec<Result<String>>` into `Result<Vec<TagName>>` (abort if one of the rows failed).
 			statement
 			.query_and_then(
-				named_params!(":name": partial_tag, ":guild": ctx.guild_id().unwrap().get()),
+				named_params!(":name": partial_tag, ":guild": guild_id.get()),
 				|row| row.get::<_, String>("name")
 			)
 			.and_then(|rows| rows.map(|row| row.map(TagName)).collect::<Result<Vec<_>, _>>()))
@@ -545,11 +550,12 @@ async fn tag(
 	TagName(tag_name): TagName,
 ) -> Result<(), PoiseError> {
 	let database = &ctx.data().database;
+	let guild_id = ctx.guild_id().ok_or("no guild id, so no tags")?.get();
 	let text = database
 		.lock()
-		.unwrap()
+		.map_err(|_| "db mutex poisoned, oops")?
 		.prepare("select text from tags where name = :name and guild = :guild")?
-		.query(named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().get()))?
+		.query(named_params!(":name": tag_name, ":guild": guild_id))?
 		.next()?
 		.map(|row| row.get::<_, String>("text"))
 		.transpose()?;
@@ -583,9 +589,12 @@ async fn set_tag(
 ) -> Result<(), PoiseError> {
 	let database = &ctx.data().database;
 
-	database.lock().unwrap().execute(
+	let guild_id = ctx.guild_id().ok_or("no guild id, so no tags")?.get();
+	database.lock()
+		.map_err(|_| "db mutex poisoned, oops")?
+		.execute(
 		"insert into tags (name, guild, text) values (:name, :guild, :text) on conflict do update set text = :text",
-		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().get(), ":text": tag_text),
+		named_params!(":name": tag_name, ":guild": guild_id, ":text": tag_text),
 	)?;
 
 	let author = ctx.author().id;
@@ -618,10 +627,14 @@ async fn delete_tag(
 ) -> Result<(), PoiseError> {
 	let database = &ctx.data().database;
 
-	let num_rows = database.lock().unwrap().execute(
-		"delete from tags where name = :name and guild = :guild",
-		named_params!(":name": tag_name, ":guild": ctx.guild_id().unwrap().get()),
-	)?;
+	let guild_id = ctx.guild_id().ok_or("no guild id, so no tags")?.get();
+	let num_rows = database
+		.lock()
+		.map_err(|_| "db mutex poisoned, oops")?
+		.execute(
+			"delete from tags where name = :name and guild = :guild",
+			named_params!(":name": tag_name, ":guild": guild_id),
+		)?;
 
 	let message = if num_rows > 0 {
 		format!("Tag {tag_name:?} deleted by <@{}>", ctx.author().id)
@@ -653,12 +666,13 @@ async fn list_tags(
 ) -> Result<(), PoiseError> {
 	let reply = {
 		let database = &ctx.data().database;
-		let database = database.lock().unwrap();
+		let database = database.lock().map_err(|_| "db mutex poisoned, oops")?;
 		let mut statement = database.prepare(
 			"select name from tags where guild = :guild and (:filter is null or instr(name, :filter) > 0) order by name",
 		)?;
+		let guild_id = ctx.guild_id().ok_or("no guild id, so no tags")?.get();
 		let mut results = statement.query_map(
-			named_params!(":filter": filter, ":guild": ctx.guild_id().unwrap().get()),
+			named_params!(":filter": filter, ":guild": guild_id),
 			|row| row.get::<_, Box<str>>("name"),
 		)?;
 		results.try_fold(String::new(), |mut acc, name| {
