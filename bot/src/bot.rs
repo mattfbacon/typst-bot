@@ -324,14 +324,17 @@ async fn render(
 
 	match res {
 		Ok(res) => {
-			let image = CreateAttachment::bytes(res.image, "rendered.png");
-			let mut message = CreateReply::default().attachment(image).reply(true);
+			let mut message = CreateReply::default().reply(true);
 
 			let mut content = String::new();
 
-			if let Some(more_pages) = res.more_pages {
-				let more_pages = more_pages.get();
-				write!(
+			if res.images.is_empty() {
+				writeln!(content, "Note: no pages generated").unwrap();
+			}
+
+			if res.more_pages > 0 {
+				let more_pages = res.more_pages;
+				writeln!(
 					content,
 					"Note: {more_pages} more page{s} ignored",
 					s = if more_pages == 1 { "" } else { "s" },
@@ -340,7 +343,7 @@ async fn render(
 			}
 
 			if !res.warnings.is_empty() {
-				write!(
+				writeln!(
 					content,
 					"Render succeeded with warnings:\n```ansi\n{}\n```",
 					sanitize_code_block(&res.warnings),
@@ -350,6 +353,11 @@ async fn render(
 
 			if !content.is_empty() {
 				message = message.content(content);
+			}
+
+			for (i, image) in res.images.into_iter().enumerate() {
+				let image = CreateAttachment::bytes(image, format!("page-{}.png", i + 1));
+				message = message.attachment(image);
 			}
 
 			ctx.send(message).await?;

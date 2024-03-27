@@ -1,5 +1,4 @@
 use std::io::Cursor;
-use std::num::NonZeroUsize;
 
 use protocol::Rendered;
 use typst::eval::Tracer;
@@ -50,6 +49,9 @@ fn to_string(v: impl ToString) -> String {
 	v.to_string()
 }
 
+const PAGE_LIMIT: usize = 5;
+const BYTES_LIMIT: usize = 25 * 1024 * 1024;
+
 pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 	let world = sandbox.with_source(source);
 
@@ -58,34 +60,47 @@ pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 		typst::compile(&world, &mut tracer).map_err(|diags| format_diagnostics(&world, &diags))?;
 	let warnings = tracer.warnings();
 
-	let frame = &document
-		.pages
-		.first()
-		.ok_or("no pages in rendered output")?
-		.frame;
-	let more_pages = NonZeroUsize::new(document.pages.len().saturating_sub(1));
-
-	let pixels_per_point = determine_pixels_per_point(frame.size()).map_err(to_string)?;
-
 	let transparent = Color::from_u8(0, 0, 0, 0);
-	let pixmap = typst_render::render(frame, pixels_per_point, transparent);
+	let mut total_attachment_size = 0;
 
-	let mut writer = Cursor::new(Vec::new());
+	let images = document
+		.pages
+		.iter()
+		.take(PAGE_LIMIT)
+		.map(|page| {
+			let frame = &page.frame;
+			let pixels_per_point = determine_pixels_per_point(frame.size()).map_err(to_string)?;
+			let pixmap = typst_render::render(frame, pixels_per_point, transparent);
 
-	// The unwrap will never fail since `Vec`'s `Write` implementation is infallible.
-	image::write_buffer_with_format(
-		&mut writer,
-		bytemuck::cast_slice(pixmap.pixels()),
-		pixmap.width(),
-		pixmap.height(),
-		image::ColorType::Rgba8,
-		image::ImageFormat::Png,
-	)
-	.unwrap();
+			let mut writer = Cursor::new(Vec::new());
 
-	let image = writer.into_inner();
+			// The unwrap will never fail since `Vec`'s `Write` implementation is infallible.
+			image::write_buffer_with_format(
+				&mut writer,
+				bytemuck::cast_slice(pixmap.pixels()),
+				pixmap.width(),
+				pixmap.height(),
+				image::ColorType::Rgba8,
+				image::ImageFormat::Png,
+			)
+			.unwrap();
+
+			Ok(writer.into_inner())
+		})
+		.take_while(|image| {
+			if let Ok(image) = image {
+				total_attachment_size += image.len();
+				total_attachment_size <= BYTES_LIMIT
+			} else {
+				true
+			}
+		})
+		.collect::<Result<Vec<_>, String>>()?;
+
+	let more_pages = document.pages.len() - images.len();
+
 	Ok(Rendered {
-		image,
+		images,
 		more_pages,
 		warnings: format_diagnostics(&world, &warnings),
 	})

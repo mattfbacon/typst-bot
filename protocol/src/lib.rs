@@ -1,5 +1,3 @@
-use std::num::NonZeroUsize;
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -11,8 +9,8 @@ pub enum Request {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Rendered {
-	pub image: Vec<u8>,
-	pub more_pages: Option<NonZeroUsize>,
+	pub images: Vec<Vec<u8>>,
+	pub more_pages: usize,
 	pub warnings: String,
 }
 
