@@ -21,7 +21,6 @@ pub type AstResponse = String;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VersionResponse {
 	pub version: String,
-	pub git_hash: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

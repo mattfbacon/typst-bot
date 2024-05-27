@@ -13,17 +13,6 @@ fn main() {
 		.find(|package| package.name == "typst")
 		.unwrap();
 	let version = &typst.version;
-	let hash = typst
-		.source
-		.as_ref()
-		.unwrap()
-		.repr
-		.rsplit_once('#')
-		.unwrap()
-		.1;
-	assert_eq!(hash.len(), 40);
-	assert!(hash.chars().all(|ch| matches!(ch, '0'..='9' | 'a'..='f')));
 
 	println!("cargo:rustc-env=TYPST_VERSION={version}");
-	println!("cargo:rustc-env=TYPST_GIT_HASH={hash}");
 }

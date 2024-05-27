@@ -61,7 +61,6 @@ fn main() {
 			}
 			Request::Version => Response::Version(protocol::VersionResponse {
 				version: env!("TYPST_VERSION").into(),
-				git_hash: env!("TYPST_GIT_HASH").into(),
 			}),
 		};
 
