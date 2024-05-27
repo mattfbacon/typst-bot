@@ -243,11 +243,15 @@ struct CodeBlock {
 #[async_trait]
 impl<'a> poise::PopArgument<'a> for CodeBlock {
 	async fn pop_from(
-		args: &'a str,
+		mut args: &'a str,
 		attachment_index: usize,
 		ctx: &serenity::prelude::Context,
 		message: &poise::serenity_prelude::Message,
 	) -> Result<(&'a str, usize, Self), (PoiseError, Option<String>)> {
+		if let Some(code_block_start) = args.find("```") {
+			args = &args[code_block_start..];
+		}
+
 		let (rest, attachment_index, code_block) =
 			poise::prefix_argument::CodeBlock::pop_from(args, attachment_index, ctx, message).await?;
 
