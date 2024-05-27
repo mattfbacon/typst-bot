@@ -22,5 +22,5 @@ const SOURCE_URL: &str = "https://github.com/mattfbacon/typst-bot";
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-	self::bot::run().await;
+	bot::run().await;
 }
