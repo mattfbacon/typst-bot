@@ -1,3 +1,4 @@
+# ============ Build Stage ============
 FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
 WORKDIR /typst-bot
 
@@ -13,7 +14,7 @@ RUN cargo chef prepare --recipe-path recipe.json
 FROM chef AS builder
 
 COPY --from=planner /typst-bot/recipe.json recipe.json
-# Make sure the flags given are the same as in the `cargo build` line later on, so that 
+# Caching layer
 RUN cargo chef cook --release --workspace --recipe-path recipe.json
 # Compilation requires only the source code.
 COPY Cargo.toml Cargo.lock ./
