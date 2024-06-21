@@ -4,7 +4,11 @@ WORKDIR /typst-bot
 
 FROM chef AS planner
 
-COPY --exclude=fonts . .
+# Compilation requires only the source code.
+COPY Cargo.toml Cargo.lock ./
+COPY protocol protocol
+COPY worker worker
+COPY bot bot
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
@@ -12,7 +16,11 @@ FROM chef AS builder
 COPY --from=planner /typst-bot/recipe.json recipe.json
 # Caching layer
 RUN cargo chef cook --release --workspace --recipe-path recipe.json
-COPY --exclude=fonts . .
+# Compilation requires only the source code.
+COPY Cargo.toml Cargo.lock ./
+COPY protocol protocol
+COPY worker worker
+COPY bot bot
 RUN cargo build --release --workspace --config git-fetch-with-cli=true
 
 # ============ Run Stage ============
