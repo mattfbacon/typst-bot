@@ -4,11 +4,11 @@ name = "worker"
 version = "0.1.0"
 
 [dependencies]
-ariadne = { version = "0.4", default_features = false }
+ariadne = { version = "0.4", default-features = false }
 bincode = "1"
 bytemuck = "1"
 comemo = "0.4"
-image = { version = "0.25", default_features = false, features = ["png"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 protocol = { path = "../protocol" }
 thiserror = "1"
 time = "0.3"
@@ -17,7 +17,7 @@ typst = "0.11"
 typst-render = "0.11"
 
 # downloading packages
-zune-inflate = { version = "0.2", default_features = false, features = [
+zune-inflate = { version = "0.2", default-features = false, features = [
 	"gzip",
 	"std",
 ] }
