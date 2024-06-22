@@ -5,9 +5,7 @@ WORKDIR /typst-bot
 
 # Compilation requires only the source code.
 COPY Cargo.toml Cargo.lock ./
-COPY protocol protocol
-COPY worker worker
-COPY bot bot
+COPY crates crates
 
 RUN cargo build --release --all --config git-fetch-with-cli=true
 
