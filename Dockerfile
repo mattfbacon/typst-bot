@@ -6,9 +6,7 @@ FROM chef AS planner
 
 # Compilation requires only the source code.
 COPY Cargo.toml Cargo.lock ./
-COPY protocol protocol
-COPY worker worker
-COPY bot bot
+COPY crates crates
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
@@ -18,9 +16,7 @@ COPY --from=planner /typst-bot/recipe.json recipe.json
 RUN cargo chef cook --release --workspace --recipe-path recipe.json
 # Compilation requires only the source code.
 COPY Cargo.toml Cargo.lock ./
-COPY protocol protocol
-COPY worker worker
-COPY bot bot
+COPY crates crates
 RUN cargo build --release --workspace --config git-fetch-with-cli=true
 
 # ============ Run Stage ============

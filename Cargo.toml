@@ -1,6 +1,6 @@
 [workspace]
-members = ["bot", "protocol", "worker"]
-default-members = ["bot"]
+members = ["crates/bot", "crates/protocol", "crates/worker"]
+default-members = ["crates/bot"]
 resolver = "2"
 
 [profile.dev]

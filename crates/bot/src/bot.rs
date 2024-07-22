@@ -547,9 +547,28 @@ async fn tag_autocomplete(ctx: Context<'_>, partial_tag: &str) -> Vec<TagName> {
 		.unwrap_or_else(|_| Vec::new())
 }
 
+fn interpolate<'a>(template: &str, mut params: impl Iterator<Item = &'a str>) -> String {
+	let mut buf = String::with_capacity(template.len() / 2);
+	for chunk in template.split("%%") {
+		let mut chunks = chunk.split("%s");
+		buf += chunks.next().unwrap();
+		for chunk in chunks {
+			buf += params.next().unwrap_or("%s");
+			buf += chunk;
+		}
+		buf += "%";
+	}
+	// Remove last `%`.
+	buf.pop();
+	buf
+}
+
 /// Print the content of a tag by name.
 ///
-/// Syntax: `?tag <tag name>`
+/// Syntax: `?tag <tag name> <parameters...>`
+///
+/// If the tag has placeholders (set with `%s`),
+/// then you can fill them with the subsequent arguments.
 ///
 /// Note that tags are local to the guild.
 #[poise::command(prefix_command, slash_command, track_edits)]
@@ -559,6 +578,7 @@ async fn tag(
 	#[description = "The tag to print"]
 	#[autocomplete = "tag_autocomplete"]
 	TagName(tag_name): TagName,
+	#[description = "Any parameters for the tag"] parameters: Vec<String>,
 ) -> Result<(), PoiseError> {
 	let database = &ctx.data().database;
 	let guild_id = ctx.guild_id().ok_or("no guild id, so no tags")?.get();
@@ -571,6 +591,7 @@ async fn tag(
 		.map(|row| row.get::<_, String>("text"))
 		.transpose()?;
 	let text = text.unwrap_or_else(|| "That tag is not defined.".into());
+	let text = interpolate(&text, parameters.iter().map(String::as_str));
 	ctx.say(text).await?;
 	Ok(())
 }
