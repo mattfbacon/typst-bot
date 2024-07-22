@@ -2840,7 +2840,6 @@ dependencies = [
  "flate2",
  "poise",
  "protocol",
- "regex",
  "rusqlite",
  "serde",
  "serenity",
