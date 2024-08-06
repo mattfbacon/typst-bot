@@ -8,7 +8,6 @@
 	non_ascii_idents,
 	nonstandard_style,
 	noop_method_call,
-	pointer_structural_match,
 	rust_2018_idioms,
 	unused_qualifications
 )]
