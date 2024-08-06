@@ -21,6 +21,10 @@ CMD [ "/bot/typst-bot" ]
 ENV DB_PATH=/bot/sqlite/db.sqlite \
     CACHE_DIRECTORY=/bot/cache
 
+# Create the necessary directories and the empty database file
+RUN mkdir -p /bot/sqlite /bot/cache && \
+    touch /bot/sqlite/db.sqlite
+
 # The only files we need from the build stage in order to run the bot are the two executables.
 COPY --from=build \
     /typst-bot/target/release/worker \
