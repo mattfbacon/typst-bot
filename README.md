@@ -38,6 +38,8 @@ and start the container with `docker compose up -d`.
 
 Here is a link you can use to invite a public instance run by [@frozolotl](https://github.com/frozolotl): https://discord.com/oauth2/authorize?client_id=1183804211264225301&permissions=3072&scope=bot
 
+Note: the bot may be limited from joining more servers because we require the message content (since slash commands don't support code blocks) and Discord denied verification, so we are limited to 100 servers. Accordingly, we request that you remove the bot from your servers if you are not using it anymore.
+
 ## License
 
 AGPL. Use `?source` to get a link to the source from deployments of the bot.
