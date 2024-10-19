@@ -1,9 +1,7 @@
 use std::io::Cursor;
 
 use protocol::Rendered;
-use typst::eval::Tracer;
 use typst::layout::{Axis, Size};
-use typst::visualize::Color;
 
 use crate::diagnostic::format_diagnostics;
 use crate::sandbox::Sandbox;
@@ -55,12 +53,12 @@ const BYTES_LIMIT: usize = 25 * 1024 * 1024;
 pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 	let world = sandbox.with_source(source);
 
-	let mut tracer = Tracer::default();
-	let document =
-		typst::compile(&world, &mut tracer).map_err(|diags| format_diagnostics(&world, &diags))?;
-	let warnings = tracer.warnings();
+	let document = typst::compile(&world);
+	let warnings = document.warnings;
+	let document = document
+		.output
+		.map_err(|diags| format_diagnostics(&world, &diags))?;
 
-	let transparent = Color::from_u8(0, 0, 0, 0);
 	let mut total_attachment_size = 0;
 
 	let images = document
@@ -68,9 +66,8 @@ pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 		.iter()
 		.take(PAGE_LIMIT)
 		.map(|page| {
-			let frame = &page.frame;
-			let pixels_per_point = determine_pixels_per_point(frame.size()).map_err(to_string)?;
-			let pixmap = typst_render::render(frame, pixels_per_point, transparent);
+			let pixels_per_point = determine_pixels_per_point(page.frame.size()).map_err(to_string)?;
+			let pixmap = typst_render::render(page, pixels_per_point);
 
 			let mut writer = Cursor::new(Vec::new());
 

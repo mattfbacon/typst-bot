@@ -1,13 +1,13 @@
-use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
-use comemo::Prehashed;
 use typst::diag::{eco_format, FileError, FileResult, PackageError, PackageResult};
 use typst::foundations::{Bytes, Datetime};
 use typst::syntax::package::PackageSpec;
 use typst::syntax::{FileId, Source};
 use typst::text::{Font, FontBook};
+use typst::utils::LazyHash;
 use typst::Library;
 
 struct FileEntry {
@@ -33,27 +33,22 @@ impl FileEntry {
 }
 
 pub struct Sandbox {
-	library: Prehashed<Library>,
-	book: Prehashed<FontBook>,
+	library: LazyHash<Library>,
+	book: LazyHash<FontBook>,
 	fonts: Vec<Font>,
 
 	cache_directory: PathBuf,
 	http: ureq::Agent,
-	files: RefCell<HashMap<FileId, FileEntry>>,
+	files: Mutex<HashMap<FileId, FileEntry>>,
 }
 
 fn fonts() -> Vec<Font> {
-	std::fs::read_dir("fonts")
-		.unwrap()
-		.map(Result::unwrap)
-		.flat_map(|entry| {
-			let path = entry.path();
-			let bytes = std::fs::read(&path).unwrap();
-			let buffer = Bytes::from(bytes);
+	typst_assets::fonts()
+		.flat_map(|bytes| {
+			let buffer = Bytes::from_static(bytes);
 			let face_count = ttf_parser::fonts_in_collection(&buffer).unwrap_or(1);
 			(0..face_count).map(move |face| {
-				Font::new(buffer.clone(), face)
-					.unwrap_or_else(|| panic!("failed to load font from {path:?} (face index {face})"))
+				Font::new(buffer.clone(), face).expect("failed to load font from typst-assets")
 			})
 		})
 		.collect()
@@ -91,15 +86,15 @@ impl Sandbox {
 		let fonts = fonts();
 
 		Self {
-			library: Prehashed::new(Library::default()),
-			book: Prehashed::new(FontBook::from_fonts(&fonts)),
+			library: LazyHash::new(Library::default()),
+			book: LazyHash::new(FontBook::from_fonts(&fonts)),
 			fonts,
 
 			cache_directory: std::env::var_os("CACHE_DIRECTORY")
 				.expect("need the `CACHE_DIRECTORY` env var")
 				.into(),
 			http: ureq::Agent::new(),
-			files: RefCell::new(HashMap::new()),
+			files: Mutex::new(HashMap::new()),
 		}
 	}
 
@@ -163,10 +158,14 @@ impl Sandbox {
 		Ok(path)
 	}
 
-	fn file(&self, id: FileId) -> FileResult<RefMut<'_, FileEntry>> {
-		if let Ok(entry) = RefMut::filter_map(self.files.borrow_mut(), |files| files.get_mut(&id)) {
-			return Ok(entry);
+	// Weird pattern because mapping a MutexGuard is not stable yet.
+	fn file<T>(&self, id: FileId, map: impl FnOnce(&mut FileEntry) -> T) -> FileResult<T> {
+		let mut files = self.files.lock().unwrap();
+		if let Some(entry) = files.get_mut(&id) {
+			return Ok(map(entry));
 		}
+		// `files` must stay locked here so we don't download the same package multiple times.
+		// TODO proper multithreading, maybe with typst-kit.
 
 		'x: {
 			if let Some(package) = id.package() {
@@ -175,12 +174,11 @@ impl Sandbox {
 					break 'x;
 				};
 				let contents = std::fs::read(&path).map_err(|error| FileError::from_io(error, &path))?;
-				return Ok(RefMut::map(self.files.borrow_mut(), |files| {
-					files.entry(id).or_insert(FileEntry {
-						bytes: contents.into(),
-						source: None,
-					})
-				}));
+				let entry = files.entry(id).or_insert(FileEntry {
+					bytes: contents.into(),
+					source: None,
+				});
+				return Ok(map(entry));
 			}
 		}
 
@@ -195,23 +193,23 @@ impl WithSource<'_> {
 }
 
 impl typst::World for WithSource<'_> {
-	fn library(&self) -> &Prehashed<Library> {
+	fn library(&self) -> &LazyHash<Library> {
 		&self.sandbox.library
 	}
 
-	fn main(&self) -> Source {
-		self.source.clone()
+	fn main(&self) -> FileId {
+		self.source.id()
 	}
 
 	fn source(&self, id: FileId) -> FileResult<Source> {
 		if id == self.source.id() {
 			Ok(self.source.clone())
 		} else {
-			self.sandbox.file(id)?.source(id)
+			self.sandbox.file(id, |file| file.source(id))?
 		}
 	}
 
-	fn book(&self) -> &Prehashed<FontBook> {
+	fn book(&self) -> &LazyHash<FontBook> {
 		&self.sandbox.book
 	}
 
@@ -220,7 +218,7 @@ impl typst::World for WithSource<'_> {
 	}
 
 	fn file(&self, id: FileId) -> FileResult<Bytes> {
-		self.sandbox.file(id).map(|file| file.bytes.clone())
+		self.sandbox.file(id, |file| file.bytes.clone())
 	}
 
 	fn today(&self, offset: Option<i64>) -> Option<Datetime> {

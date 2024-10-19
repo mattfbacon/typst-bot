@@ -15,16 +15,16 @@ The bot uses two binaries:
 
 To set up the working environment, create a directory with the following items:
 
-- `fonts`: Copied from the repo. ~~Make sure you have Git LFS set up so the fonts are downloaded properly.~~ The fonts no longer use LFS due to GitHub's new transfer limits.
 - `worker`: The worker binary, copied/hardlinked from the target directory after building.
 - `bot`: The bot binary, copied/hardlinked from the target directory after building. (This doesn't need to be in this directory, but having everything in one place simplifies things.)
 - `db.sqlite`: You can just `touch` this, but the bot needs to be able to write to it.
+(Legacy note: you don't need `fonts` anymore because we use `typst-assets` now.)
 
 To run, CD into this directory, set `DISCORD_TOKEN` to your bot token, set `CACHE_DIRECTORY` and `DB_PATH` to suitable locations, and run the `bot` binary (not the `worker` binary that's also in the directory).
 
 ### Docker
 
-There is a `Dockerfile` and `docker-compose.yml` for running the bot inside a Docker container. 
+There is a `Dockerfile` and `docker-compose.yml` for running the bot inside a Docker container.
 
 To set up the bot with Docker, create a `.env` file like the following:
 
