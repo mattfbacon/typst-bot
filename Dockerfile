@@ -39,8 +39,3 @@ COPY --from=builder \
     /typst-bot/target/release/worker \
     /typst-bot/target/release/typst-bot \
     ./
-
-# Fonts are copied from the host at the very end so that the fonts can get updated without
-# invalidating any previously cached image layers.
-COPY fonts fonts
-
