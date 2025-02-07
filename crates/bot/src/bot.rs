@@ -197,26 +197,21 @@ fn render_help() -> String {
 
 	format!(
 		"\
-Render the given code as an image.
+Render Typst code as an image.
 
 Syntax: `?render [pagesize=<page size>] [theme=<theme>] <code block> [...]`
 
 **Flags**
-
 - `pagesize` can be `preview` (default),  `auto`, or `default`.
-
 - `theme` can be `dark` (default), `light`, or `transparent`.
 
 To be clear, the full default preamble is:
-
 ```
 {default_preamble}
 ```
-
 To remove the preamble entirely, use `pagesize=default theme=transparent`.
 
 **Examples**
-
 ```
 ?render `hello, world!`
 
@@ -288,7 +283,6 @@ impl<'a> poise::PopArgument<'a> for Rest {
 	}
 }
 
-/// Render Typst code as an image.
 #[poise::command(
 	prefix_command,
 	track_edits,
@@ -299,11 +293,9 @@ impl<'a> poise::PopArgument<'a> for Rest {
 )]
 async fn render(
 	ctx: Context<'_>,
-	#[description = "Flags"] flags: RenderFlags,
-	#[description = "Code to render"] code: CodeBlock,
-	#[rename = "rest"]
-	#[description = "Extra message content"]
-	_: Rest,
+	flags: RenderFlags,
+	code: CodeBlock,
+	#[rename = "rest"] _: Rest,
 ) -> Result<(), PoiseError> {
 	let pool = &ctx.data().pool;
 
@@ -384,6 +376,13 @@ async fn help(
 	ctx: Context<'_>,
 	#[description = "Specific command to show help about"] command: Option<String>,
 ) -> Result<(), PoiseError> {
+	// Avoid the useless parameter list from `poise::builtins::help`.
+	if command.as_deref() == Some("render") {
+		// We prefer `reply` but `poise::builtins::help` uses `say`, so be consistent.
+		ctx.say(format!("`?render`\n\n{}", render_help())).await?;
+		return Ok(());
+	}
+
 	let config = poise::builtins::HelpConfiguration {
 		extra_text_at_bottom: "\
 Type ?help command for more info on a command.
