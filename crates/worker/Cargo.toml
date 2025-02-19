@@ -4,14 +4,15 @@ name = "worker"
 version = "0.1.0"
 
 [dependencies]
-ariadne = { version = "0.4", default-features = false }
+ariadne = { version = "0.5", default-features = false }
 bincode = "1"
 bytemuck = "1"
 comemo = "0.4"
 image = { version = "0.25", default-features = false, features = ["png"] }
 protocol = { path = "../protocol" }
-thiserror = "1"
+thiserror = "2"
 time = "0.3"
+# Typst uses 0.24.
 ttf-parser = "0.24"
 typst = "0.13"
 typst-assets = { version = "0.13", features = ["fonts"] }
@@ -23,7 +24,7 @@ zune-inflate = { version = "0.2", default-features = false, features = [
 	"std",
 ] }
 tar = "0.4"
-ureq = "2"
+ureq = "3"
 
 [build-dependencies]
-cargo_metadata = "0.18"
+cargo_metadata = "0.19"

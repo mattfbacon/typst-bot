@@ -62,11 +62,6 @@ fn get_time() -> time::OffsetDateTime {
 	time::OffsetDateTime::now_utc()
 }
 
-fn http_successful(status: u16) -> bool {
-	// 2XX
-	status / 100 == 2
-}
-
 fn retry<T, E>(mut f: impl FnMut() -> Result<T, E>) -> Result<T, E> {
 	if let Ok(ok) = f() {
 		Ok(ok)
@@ -93,7 +88,7 @@ impl Sandbox {
 			cache_directory: std::env::var_os("CACHE_DIRECTORY")
 				.expect("need the `CACHE_DIRECTORY` env var")
 				.into(),
-			http: ureq::Agent::new(),
+			http: ureq::agent(),
 			files: Mutex::new(HashMap::new()),
 		}
 	}
@@ -131,7 +126,7 @@ impl Sandbox {
 				.map_err(|error| eco_format!("{error}"))?;
 
 			let status = response.status();
-			if !http_successful(status) {
+			if !status.is_success() {
 				return Err(eco_format!(
 					"response returned unsuccessful status code {status}",
 				));
@@ -141,10 +136,9 @@ impl Sandbox {
 		})
 		.map_err(|error| PackageError::NetworkFailed(Some(error)))?;
 
-		let mut compressed_archive = Vec::new();
-		response
-			.into_reader()
-			.read_to_end(&mut compressed_archive)
+		let compressed_archive = response
+			.into_body()
+			.read_to_vec()
 			.map_err(|error| PackageError::NetworkFailed(Some(eco_format!("{error}"))))?;
 		let raw_archive = zune_inflate::DeflateDecoder::new(&compressed_archive)
 			.decode_gzip()

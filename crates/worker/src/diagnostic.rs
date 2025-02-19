@@ -185,6 +185,16 @@ struct Span {
 	char_span_end: usize,
 }
 
+impl Span {
+	fn point(file_id: FileId, char_pos: usize) -> Self {
+		Self {
+			file_id,
+			char_span_start: char_pos,
+			char_span_end: char_pos,
+		}
+	}
+}
+
 impl ariadne::Span for Span {
 	type SourceId = FileId;
 
@@ -235,7 +245,7 @@ pub fn format_diagnostics(sandbox: &WithSource, diagnostics: &[SourceDiagnostic]
 			.unwrap_or_else(|| sandbox.main_source().id());
 		let report_pos = span.map_or(0, |span| span.char_span_start);
 
-		let mut report = Report::build(report_kind, source_id, report_pos)
+		let mut report = Report::build(report_kind, Span::point(source_id, report_pos))
 			.with_config(Config::default().with_tab_width(2).with_color(false))
 			.with_message(&diagnostic.message);
 

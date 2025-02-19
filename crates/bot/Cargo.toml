@@ -11,12 +11,12 @@ poise = { version = "0.6", git = "https://github.com/serenity-rs/poise", default
 	"cache",
 ] }
 protocol = { path = "../protocol" }
-rusqlite = { version = "0.31", features = ["bundled"] }
+rusqlite = { version = "0.33", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serenity = { version = "0.12", default-features = false, features = [
 	"rustls_backend",
 ] }
 strip-ansi-escapes = "0.2.0"
-thiserror = "1"
+thiserror = "2"
 tokio = { version = "1", features = ["rt", "macros", "sync"] }
 tracing = "0.1"
