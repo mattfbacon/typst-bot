@@ -12,10 +12,10 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 protocol = { path = "../protocol" }
 thiserror = "1"
 time = "0.3"
-ttf-parser = "0.21"
-typst = "0.12"
-typst-assets = { version = "0.12", features = ["fonts"] }
-typst-render = "0.12"
+ttf-parser = "0.24"
+typst = "0.13"
+typst-assets = { version = "0.13", features = ["fonts"] }
+typst-render = "0.13"
 
 # downloading packages
 zune-inflate = { version = "0.2", default-features = false, features = [

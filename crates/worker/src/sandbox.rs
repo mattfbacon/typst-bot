@@ -45,7 +45,7 @@ pub struct Sandbox {
 fn fonts() -> Vec<Font> {
 	typst_assets::fonts()
 		.flat_map(|bytes| {
-			let buffer = Bytes::from_static(bytes);
+			let buffer = Bytes::new(bytes);
 			let face_count = ttf_parser::fonts_in_collection(&buffer).unwrap_or(1);
 			(0..face_count).map(move |face| {
 				Font::new(buffer.clone(), face).expect("failed to load font from typst-assets")
@@ -175,7 +175,7 @@ impl Sandbox {
 				};
 				let contents = std::fs::read(&path).map_err(|error| FileError::from_io(error, &path))?;
 				let entry = files.entry(id).or_insert(FileEntry {
-					bytes: contents.into(),
+					bytes: Bytes::new(contents),
 					source: None,
 				});
 				return Ok(map(entry));

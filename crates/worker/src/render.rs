@@ -1,7 +1,7 @@
 use std::io::Cursor;
 
 use protocol::Rendered;
-use typst::layout::{Axis, Size};
+use typst::layout::{Axis, PagedDocument, Size};
 
 use crate::diagnostic::format_diagnostics;
 use crate::sandbox::Sandbox;
@@ -53,7 +53,7 @@ const BYTES_LIMIT: usize = 25 * 1024 * 1024;
 pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 	let world = sandbox.with_source(source);
 
-	let document = typst::compile(&world);
+	let document = typst::compile::<PagedDocument>(&world);
 	let warnings = document.warnings;
 	let document = document
 		.output
