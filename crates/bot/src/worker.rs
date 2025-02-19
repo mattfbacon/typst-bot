@@ -161,7 +161,7 @@ impl Process {
 			fn inner(
 				child: &mut Child,
 				request: &Request,
-				progress_channel: &Option<mpsc::Sender<String>>,
+				progress_channel: Option<&mpsc::Sender<String>>,
 			) -> bincode::Result<Response> {
 				bincode::serialize_into(child.stdin.as_mut().unwrap(), &request)?;
 				loop {
@@ -176,7 +176,7 @@ impl Process {
 					}
 				}
 			}
-			let res = inner(&mut child, &request, &progress_channel);
+			let res = inner(&mut child, &request, progress_channel.as_ref());
 			(child, res)
 		})
 		.await
