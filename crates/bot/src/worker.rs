@@ -120,6 +120,7 @@ struct Process {
 
 impl Process {
 	async fn spawn() -> anyhow::Result<Self> {
+		// Make sure to keep in sync with the README.
 		const VAR_NAME: &str = "TYPST_BOT_WORKER_PATH";
 		let worker_path = std::env::var_os(VAR_NAME).unwrap_or_else(|| "./worker".into());
 		#[allow(clippy::unnecessary_debug_formatting)]
