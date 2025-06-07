@@ -120,13 +120,14 @@ struct Process {
 
 impl Process {
 	async fn spawn() -> anyhow::Result<Self> {
-		let worker_path = std::env::var_os("TYPST_BOT_WORKER_PATH").unwrap_or_else(|| "./worker".into());
+		const VAR_NAME: &str = "TYPST_BOT_WORKER_PATH";
+		let worker_path = std::env::var_os(VAR_NAME).unwrap_or_else(|| "./worker".into());
 		let child = std::process::Command::new(&worker_path)
 			.stdin(Stdio::piped())
 			.stdout(Stdio::piped())
 			.stderr(Stdio::inherit())
 			.spawn()
-			.with_context(|| format!("spawning worker process (path={worker_path:?}).\n\ntry setting TYPST_BOT_WORKER_PATH to point to the worker binary, e.g. in the cargo target directory. alternatively, follow the instructions in the README that describe how to set up a standalone installation.")?;
+			.with_context(|| format!("spawning worker process (path={worker_path:?}).\n\ntry setting the env var {VAR_NAME} to point to the worker binary, e.g. in the cargo target directory. alternatively, follow the instructions in the README that describe how to set up a standalone installation.")?;
 
 		let mut ret = Self { child: Some(child) };
 		// Ask for the version and ignore it, as a health check.
