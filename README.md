@@ -15,7 +15,7 @@ The bot uses two binaries:
 
 To set up the working environment, create a directory with the following items:
 
-- `worker`: The worker binary, copied/hardlinked from the target directory after building.
+- `worker`: The worker binary, copied/hardlinked from the target directory after building. If you put the worker somewhere else, you can set `TYPST_BOT_WORKER_PATH` to it.
 - `bot`: The bot binary, copied/hardlinked from the target directory after building. (This doesn't need to be in this directory, but having everything in one place simplifies things.)
 - `db.sqlite`: You can just `touch` this, but the bot needs to be able to write to it.
 (Legacy note: you don't need `fonts` anymore because we use `typst-assets` now.)
