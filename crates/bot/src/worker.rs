@@ -127,7 +127,7 @@ impl Process {
 			.stdout(Stdio::piped())
 			.stderr(Stdio::inherit())
 			.spawn()
-			.with_context(|| format!("spawning worker process (path={worker_path:?}).\n\ntry setting the env var {VAR_NAME} to point to the worker binary, e.g. in the cargo target directory. alternatively, follow the instructions in the README that describe how to set up a standalone installation.")?;
+			.with_context(|| format!("spawning worker process (path={worker_path:?}).\n\ntry setting the env var {VAR_NAME} to point to the worker binary, e.g. in the cargo target directory. alternatively, follow the instructions in the README that describe how to set up a standalone installation."))?;
 
 		let mut ret = Self { child: Some(child) };
 		// Ask for the version and ignore it, as a health check.
