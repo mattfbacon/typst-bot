@@ -122,6 +122,7 @@ impl Process {
 	async fn spawn() -> anyhow::Result<Self> {
 		const VAR_NAME: &str = "TYPST_BOT_WORKER_PATH";
 		let worker_path = std::env::var_os(VAR_NAME).unwrap_or_else(|| "./worker".into());
+		#[allow(clippy::unnecessary_debug_formatting)]
 		let child = std::process::Command::new(&worker_path)
 			.stdin(Stdio::piped())
 			.stdout(Stdio::piped())
