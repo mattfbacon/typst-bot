@@ -766,7 +766,16 @@ pub async fn run() {
 
 	let edit_tracker_time = std::time::Duration::from_secs(3600);
 
-	let token = std::env::var("DISCORD_TOKEN").expect("need `DISCORD_TOKEN` env var");
+	let token = std::env::var("DISCORD_TOKEN")
+		.or_else(|_| {
+			// check if DISCORD_TOKEN_FILE is set
+			let file_path = std::env::var("DISCORD_TOKEN_FILE")
+				.map_err(|_| std::io::Error::new(std::io::ErrorKind::NotFound, "DISCORD_TOKEN_FILE not set"))?;
+				std::fs::read_to_string(file_path).map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+		})
+		.map(|s| s.trim().to_string())
+		.expect("need `DISCORD_TOKEN` env var or DISCORD_TOKEN_FILE pointing to a secret");
+
 	let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
 	let framework = poise::Framework::builder()
 		.options(poise::FrameworkOptions {

@@ -1,7 +1,7 @@
 ---
 
 name: typst-bot
-version: "3.8"
+version: "3.9"
 services:
     bot:
         # This service is built using the Dockerfile in the current directory.
@@ -12,7 +12,9 @@ services:
         # has when Compose is run. It is not saved in the image. Compose will automatically grab its
         # value from `.env` or the host OS. `?:error` makes it mandatory.
         environment:
-            - DISCORD_TOKEN=${DISCORD_TOKEN?:error}
+            DISCORD_TOKEN_FILE: /run/secrets/discord_token
+        secrets:
+            - discord_token
         # The `/bot/sqlite` and `/bot/cache` directories are mapped to volumes.
         volumes:
             - sqlite:/bot/sqlite
@@ -23,3 +25,7 @@ services:
 volumes:
     sqlite:
     cache:
+
+secrets:
+    discord_token:
+        file: discord_token.txt
