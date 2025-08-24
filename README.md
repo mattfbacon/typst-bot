@@ -26,13 +26,7 @@ To run, CD into this directory, set `DISCORD_TOKEN` to your bot token, set `CACH
 
 There is a `Dockerfile` and `docker-compose.yml` for running the bot inside a Docker container.
 
-To set up the bot with Docker, create a `.env` file like the following:
-
-```
-DISCORD_TOKEN=YourBotTokenHere
-```
-
-and start the container with `docker compose up -d`.
+To set up the bot with Docker, create a `discord_token.txt` file containing your your bot token, and start the container with `docker compose up -d`.
 
 ### Public Instance
 
