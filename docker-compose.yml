@@ -1,7 +1,4 @@
----
-
 name: typst-bot
-version: "3.9"
 services:
     bot:
         # This service is built using the Dockerfile in the current directory.
