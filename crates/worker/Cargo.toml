@@ -16,6 +16,7 @@ time = "0.3"
 ttf-parser = "0.24"
 typst = "0.13"
 typst-assets = { version = "0.13", features = ["fonts"] }
+typst-dev-assets = { git = "https://github.com/typst/typst-dev-assets.git", rev = "995986da" }
 typst-render = "0.13"
 
 # downloading packages

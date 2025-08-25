@@ -2941,6 +2941,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "typst-dev-assets"
+version = "0.13.1"
+source = "git+https://github.com/typst/typst-dev-assets.git?rev=995986da#995986dacab11558ea2d7c3a08dd7ad7197743d0"
+
+[[package]]
 name = "typst-eval"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3787,6 +3792,7 @@ dependencies = [
  "ttf-parser",
  "typst",
  "typst-assets",
+ "typst-dev-assets",
  "typst-render",
  "ureq",
  "zune-inflate",

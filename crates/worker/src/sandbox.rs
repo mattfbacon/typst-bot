@@ -44,6 +44,7 @@ pub struct Sandbox {
 
 fn fonts() -> Vec<Font> {
 	typst_assets::fonts()
+		.chain(typst_dev_assets::fonts())
 		.flat_map(|bytes| {
 			let buffer = Bytes::new(bytes);
 			let face_count = ttf_parser::fonts_in_collection(&buffer).unwrap_or(1);
