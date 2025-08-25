@@ -3,4 +3,5 @@
 /cache
 # Used for docker containers and might contain secrets.
 /.env
+/discord_token.txt
 *.sqlite
