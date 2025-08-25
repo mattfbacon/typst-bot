@@ -40,6 +40,14 @@ Here is a link you can use to invite a public instance run by [@frozolotl](https
 
 Note: the bot may be limited from joining more servers because we require the message content (since slash commands don't support code blocks) and Discord denied verification, so we are limited to 100 servers. Accordingly, we request that you remove the bot from your servers if you are not using it anymore.
 
+### Is it safe to host? Is it true that Typst allows arbitrary code execution?
+
+Typst is fundamentally a sandboxed, interpreted language so there is no such thing as "arbitrary code execution".
+However, Typst documents/code can access the host environment in a limited capacity.
+In CLI usage, documents can read files (e.g., images) inside the project directory and download packages from the typst packages repo.
+For the bot, only the latter is allowed. Resource exhaustion and DOS attacks are also somewhat addressed with timeouts and automatic restarting on crash.
+If you are paranoid, I suggest to set up adequate sandboxing on the host (which you should do for everything anyway) -- for example with Docker or systemd sandboxing.
+
 ## License
 
 AGPL. Use `?source` to get a link to the source from deployments of the bot.
