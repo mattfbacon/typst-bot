@@ -788,9 +788,13 @@ pub async fn run() {
 				source(),
 				ast(),
 				version(),
+				#[cfg(feature = "tags")]
 				tag(),
+				#[cfg(feature = "tags")]
 				set_tag(),
+				#[cfg(feature = "tags")]
 				delete_tag(),
+				#[cfg(feature = "tags")]
 				list_tags(),
 			],
 			allowed_mentions: Some(CreateAllowedMentions::new()),
