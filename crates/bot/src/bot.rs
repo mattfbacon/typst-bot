@@ -788,13 +788,13 @@ pub async fn run() {
 				source(),
 				ast(),
 				version(),
-				#[cfg(not(feature = "no-tags"))]
+				#[cfg(feature = "tags")]
 				tag(),
-				#[cfg(not(feature = "no-tags"))]
+				#[cfg(feature = "tags")]
 				set_tag(),
-				#[cfg(not(feature = "no-tags"))]
+				#[cfg(feature = "tags")]
 				delete_tag(),
-				#[cfg(not(feature = "no-tags"))]
+				#[cfg(feature = "tags")]
 				list_tags(),
 			],
 			allowed_mentions: Some(CreateAllowedMentions::new()),

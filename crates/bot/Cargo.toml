@@ -22,4 +22,5 @@ tokio = { version = "1", features = ["rt", "macros", "sync"] }
 tracing = "0.1"
 
 [features]
-no-tags = []
+default = ["tags"]
+tags = []
