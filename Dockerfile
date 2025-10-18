@@ -20,7 +20,7 @@ COPY crates crates
 RUN cargo build --release --workspace --config git-fetch-with-cli=true
 
 # ============ Run Stage ============
-FROM debian:bookworm-slim as run
+FROM debian:trixie-slim as run
 
 WORKDIR /bot
 CMD [ "/bot/typst-bot" ]
