@@ -8,7 +8,7 @@ use typst::syntax::package::PackageSpec;
 use typst::syntax::{FileId, Source};
 use typst::text::{Font, FontBook};
 use typst::utils::LazyHash;
-use typst::Library;
+use typst::{Library, LibraryExt as _};
 
 struct FileEntry {
 	bytes: Bytes,
