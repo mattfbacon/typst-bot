@@ -158,7 +158,7 @@ impl<'a> SourceCache<'a> {
 impl Cache<FileId> for SourceCache<'_> {
 	type Storage = String;
 
-	fn fetch(&mut self, id: &FileId) -> Result<&ariadne::Source, Box<dyn std::fmt::Debug + '_>> {
+	fn fetch(&mut self, id: &FileId) -> Result<&ariadne::Source, impl std::fmt::Debug> {
 		let source = match self.cache.entry(*id) {
 			Entry::Occupied(entry) => entry.into_mut(),
 			Entry::Vacant(entry) => {
@@ -170,10 +170,10 @@ impl Cache<FileId> for SourceCache<'_> {
 				entry.insert(source)
 			}
 		};
-		Ok(source)
+		Ok::<_, Box<dyn std::fmt::Debug>>(source)
 	}
 
-	fn display<'a>(&self, id: &'a FileId) -> Option<Box<dyn std::fmt::Display + 'a>> {
+	fn display<'a>(&self, id: &'a FileId) -> Option<impl std::fmt::Display + 'a> {
 		Some(Box::new(format!("{id:?}")))
 	}
 }
