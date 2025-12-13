@@ -13,10 +13,10 @@ protocol = { path = "../protocol" }
 thiserror = "2"
 time = "0.3"
 ttf-parser = "0.25"
-typst = "0.14.1"
-typst-assets = { version = "0.14.1", features = ["fonts"] }
-typst-dev-assets = { git = "https://github.com/typst/typst-dev-assets.git", rev = "03addcf" }
-typst-render = "0.14.1"
+typst = "0.14.2"
+typst-assets = { version = "0.14.2", features = ["fonts"] }
+typst-dev-assets = { git = "https://github.com/typst/typst-dev-assets.git", rev = "fe6cad9" }
+typst-render = "0.14.2"
 
 # downloading packages
 zune-inflate = { version = "0.2", default-features = false, features = [
