@@ -199,11 +199,19 @@ fn render_help() -> String {
 		"\
 Render Typst code as an image.
 
-Syntax: `?render [pagesize=<page size>] [theme=<theme>] <code block> [...]`
+Render command syntax:
+- `?render [pagesize=<page size>] [theme=<theme>] <code block> [...]`
+- Aliases: `?r ps={{p,a,d}} t={{d,l,t}} <code block> [...]`
 
 **Flags**
-- `pagesize` can be `preview` (default),  `auto`, or `default`.
-- `theme` can be `dark` (default), `light`, or `transparent`.
+- **`pagesize=`** (alias: **`ps=`**):
+  - `preview` (alias `p`, default): 10pt margin, 300pt width, auto height
+  - `auto` (alias `a`): 10pt margin, auto width, auto height
+  - `default` (alias `d`): Leave as Typst's default
+- **`theme=`** (alias **`t=`**):
+  - `dark` (alias `d`, default): Set text and background to match Discord's dark theme
+  - `light` (alias `l`): Set the background to white
+  - `transparent` (alias `t`): Leave the background transparent
 
 To be clear, the full default preamble is:
 ```
@@ -214,6 +222,8 @@ To remove the preamble entirely, use `pagesize=default theme=transparent`.
 **Examples**
 ```
 ?render `hello, world!`
+
+?r ps=a t=l `Short syntax!`
 
 ?render pagesize=default theme=light ``‍`
 = Heading!
