@@ -24,11 +24,13 @@ FROM debian:trixie-slim AS run
 
 WORKDIR /bot
 CMD [ "/bot/typst-bot" ]
+EXPOSE 3000
 
-# These variables can get burned into the image without issue. We don't want `DISCORD_TOKEN` saved
-# in the image, though; it needs to come from the user (or from Compose) when the container is run.
+# These variables can get burned into the image without issue. Slack tokens and signing secrets
+# still need to come from the user (or from Compose) when the container is run.
 ENV DB_PATH=/bot/sqlite/db.sqlite \
-    CACHE_DIRECTORY=/bot/cache
+    CACHE_DIRECTORY=/bot/cache \
+    BIND_ADDR=0.0.0.0:3000
 
 # Create the necessary directories and the empty database file.
 RUN mkdir -p /bot/sqlite /bot/cache && \

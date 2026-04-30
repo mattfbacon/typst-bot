@@ -5,3 +5,5 @@
 /.env
 /discord_token.txt
 *.sqlite
+
+debug.sh

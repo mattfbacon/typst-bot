@@ -1,17 +1,19 @@
-name: typst-bot
+name: typst-slack-bot
 services:
     bot:
         # This service is built using the Dockerfile in the current directory.
         build: .
         # This service is always restarted if it ever shuts down (unless stopped manually).
         restart: always
-        # The `DISCORD_TOKEN` variable is set within the container to whatever value `DISCORD_TOKEN`
-        # has when Compose is run. It is not saved in the image. Compose will automatically grab its
-        # value from `.env` or the host OS. `?:error` makes it mandatory.
         environment:
-            DISCORD_TOKEN_FILE: /run/secrets/discord_token
+            SLACK_BOT_TOKEN_FILE: /run/secrets/slack_bot_token
+            SLACK_SIGNING_SECRET_FILE: /run/secrets/slack_signing_secret
+            BIND_ADDR: 0.0.0.0:3000
+        ports:
+            - 3000:3000
         secrets:
-            - discord_token
+            - slack_bot_token
+            - slack_signing_secret
         # The `/bot/sqlite` and `/bot/cache` directories are mapped to volumes.
         volumes:
             - sqlite:/bot/sqlite
@@ -24,5 +26,7 @@ volumes:
     cache:
 
 secrets:
-    discord_token:
-        file: discord_token.txt
+    slack_bot_token:
+        file: slack_bot_token.txt
+    slack_signing_secret:
+        file: slack_signing_secret.txt

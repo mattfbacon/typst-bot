@@ -17,7 +17,7 @@
 mod bot;
 mod worker;
 
-const SOURCE_URL: &str = "https://github.com/mattfbacon/typst-bot";
+const SOURCE_URL: &str = "https://github.com/yoneyama/typst-slack-bot";
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
