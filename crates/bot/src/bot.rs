@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Write as _};
 use std::str::FromStr;
+use std::time::Duration;
 
 use poise::serenity_prelude::GatewayIntents;
 use poise::{async_trait, CreateReply};
@@ -782,7 +783,7 @@ pub async fn run() {
 
 	let pool = Worker::spawn().await.unwrap();
 
-	let edit_tracker_time = std::time::Duration::from_secs(3600);
+	let edit_tracker_time = Duration::from_hours(1);
 
 	let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
 	let framework = poise::Framework::builder()

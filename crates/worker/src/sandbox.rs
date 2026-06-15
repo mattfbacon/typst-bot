@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use typst::diag::{eco_format, FileError, FileResult, PackageError, PackageResult};
-use typst::foundations::{Bytes, Datetime};
+use typst::foundations::{Bytes, Datetime, Duration};
 use typst::syntax::package::PackageSpec;
-use typst::syntax::{FileId, Source};
+use typst::syntax::{FileId, Source, VirtualRoot};
 use typst::text::{Font, FontBook};
 use typst::utils::LazyHash;
 use typst::{Library, LibraryExt as _};
@@ -162,22 +162,18 @@ impl Sandbox {
 		// `files` must stay locked here so we don't download the same package multiple times.
 		// TODO proper multithreading, maybe with typst-kit.
 
-		'x: {
-			if let Some(package) = id.package() {
-				let package_dir = self.ensure_package(package)?;
-				let Some(path) = id.vpath().resolve(&package_dir) else {
-					break 'x;
-				};
-				let contents = std::fs::read(&path).map_err(|error| FileError::from_io(error, &path))?;
-				let entry = files.entry(id).or_insert(FileEntry {
-					bytes: Bytes::new(contents),
-					source: None,
-				});
-				return Ok(map(entry));
-			}
+		if let VirtualRoot::Package(package) = id.root() {
+			let package_dir = self.ensure_package(package)?;
+			let path = id.vpath().realize(&package_dir)?;
+			let contents = std::fs::read(&path).map_err(|error| FileError::from_io(error, &path))?;
+			let entry = files.entry(id).or_insert(FileEntry {
+				bytes: Bytes::new(contents),
+				source: None,
+			});
+			return Ok(map(entry));
 		}
 
-		Err(FileError::NotFound(id.vpath().as_rootless_path().into()))
+		Err(FileError::NotFound(id.vpath().get_without_slash().into()))
 	}
 }
 
@@ -216,10 +212,11 @@ impl typst::World for WithSource<'_> {
 		self.sandbox.file(id, |file| file.bytes.clone())
 	}
 
-	fn today(&self, offset: Option<i64>) -> Option<Datetime> {
+	fn today(&self, offset: Option<Duration>) -> Option<Datetime> {
 		// We are in UTC.
-		let offset = offset.unwrap_or(0);
-		let offset = time::UtcOffset::from_hms(offset.try_into().ok()?, 0, 0).ok()?;
+		const DEFAULT_OFFSET: i32 = 0;
+		let offset = offset.map_or(DEFAULT_OFFSET, |dur| dur.seconds().trunc() as i32);
+		let offset = time::UtcOffset::from_whole_seconds(offset).ok()?;
 		let time = self.time.checked_to_offset(offset)?;
 		Some(Datetime::Date(time.date()))
 	}

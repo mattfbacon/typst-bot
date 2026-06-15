@@ -5,8 +5,8 @@ use std::ops::Range;
 
 use ariadne::{Cache, Config, Label, Report};
 use typst::diag::SourceDiagnostic;
-use typst::syntax::FileId;
-use typst::World;
+use typst::syntax::{DiagSpan, FileId};
+use typst::{World, WorldExt};
 
 use crate::sandbox::WithSource;
 
@@ -220,41 +220,45 @@ pub fn format_diagnostics(sandbox: &WithSource, diagnostics: &[SourceDiagnostic]
 
 	let mut diagnostics = diagnostics.iter();
 	while let Some(diagnostic) = diagnostics.next() {
-		let typst_span = diagnostic.span;
-		let span = typst_span.id().map(|file_id| {
+		let resolve_span = |span: DiagSpan| {
+			let file_id = span.id()?;
 			let source = sandbox
 				.source(file_id)
 				.expect("invalid file ID in diagnostic span");
-			let byte_span = source.range(typst_span).unwrap();
-			let mut char_span = byte_span_to_char_span(source.text(), byte_span)
+			let byte_span = sandbox.range(span).unwrap();
+			let char_span = byte_span_to_char_span(source.text(), byte_span)
 				.expect("invalid byte span reported by typst diagnostic");
-			// Avoid empty spans.
-			if char_span.end == char_span.start {
-				char_span.end += 1;
-			}
-			Span {
+			Some(Span {
 				file_id,
 				char_span_start: char_span.start,
 				char_span_end: char_span.end,
-			}
-		});
+			})
+		};
+
+		let main_span = resolve_span(diagnostic.span);
 
 		let report_kind = severity_to_report_kind(diagnostic.severity);
-		let source_id = typst_span
-			.id()
-			.unwrap_or_else(|| sandbox.main_source().id());
-		let report_pos = span.map_or(0, |span| span.char_span_start);
+		let source_id = main_span.map_or_else(|| sandbox.main_source().id(), |span| span.file_id);
+		let report_pos = main_span.map_or(0, |span| span.char_span_start);
 
 		let mut report = Report::build(report_kind, Span::point(source_id, report_pos))
 			.with_config(Config::default().with_tab_width(2).with_color(false))
 			.with_message(&diagnostic.message);
 
-		if let Some(span) = span {
-			report = report.with_label(Label::new(span));
+		if let Some(span) = main_span {
+			report = report.with_label(Label::new(span).with_message(&diagnostic.message));
 		}
 
-		if !diagnostic.hints.is_empty() {
-			report = report.with_help(diagnostic.hints.join("\n"));
+		for hint in &diagnostic.hints {
+			if let Some(span) = resolve_span(hint.span) {
+				let label = Label::new(span)
+					.with_message(&hint.v)
+					.with_order(100)
+					.with_priority(100);
+				report = report.with_label(label);
+			} else {
+				report = report.with_help(&hint.v);
+			}
 		}
 
 		let report = report.finish();

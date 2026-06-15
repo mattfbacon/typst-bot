@@ -1,30 +1,30 @@
 use std::io::Cursor;
 
 use protocol::Rendered;
-use typst::layout::{Axis, PagedDocument, Size};
+use typst::layout::{Axis, Size};
 
 use crate::diagnostic::format_diagnostics;
 use crate::sandbox::Sandbox;
 
-const DESIRED_RESOLUTION: f32 = 1000.0;
-const MAX_SIZE: f32 = 10000.0;
-const MAX_PIXELS_PER_POINT: f32 = 5.0;
+const DESIRED_RESOLUTION: f64 = 1000.0;
+const MAX_SIZE: f64 = 10000.0;
+const MAX_PIXELS_PER_POINT: f64 = 5.0;
 
 #[derive(Debug, thiserror::Error)]
 #[error(
 	"rendered output was too big: the {axis:?} axis was {size} pt but the maximum is {MAX_SIZE}"
 )]
 pub struct TooBig {
-	size: f32,
+	size: f64,
 	axis: Axis,
 }
 
-fn determine_pixels_per_point(size: Size) -> Result<f32, TooBig> {
+fn determine_pixels_per_point(size: Size) -> Result<f64, TooBig> {
 	// We want to truncate.
 	#![allow(clippy::cast_possible_truncation)]
 
-	let x = size.x.to_pt() as f32;
-	let y = size.y.to_pt() as f32;
+	let x = size.x.to_pt();
+	let y = size.y.to_pt();
 
 	if x > MAX_SIZE {
 		Err(TooBig {
@@ -53,7 +53,7 @@ const BYTES_LIMIT: usize = 25 * 1024 * 1024;
 pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 	let world = sandbox.with_source(source);
 
-	let document = typst::compile::<PagedDocument>(&world);
+	let document = typst::compile::<typst_layout::PagedDocument>(&world);
 	let warnings = document.warnings;
 	let document = document
 		.output
@@ -62,12 +62,16 @@ pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 	let mut total_attachment_size = 0;
 
 	let images = document
-		.pages
+		.pages()
 		.iter()
 		.take(PAGE_LIMIT)
 		.map(|page| {
-			let pixels_per_point = determine_pixels_per_point(page.frame.size()).map_err(to_string)?;
-			let pixmap = typst_render::render(page, pixels_per_point);
+			let pixel_per_pt = determine_pixels_per_point(page.frame.size()).map_err(to_string)?;
+			let opts = typst_render::RenderOptions {
+				pixel_per_pt: pixel_per_pt.into(),
+				render_bleed: false,
+			};
+			let pixmap = typst_render::render(page, &opts);
 
 			let mut writer = Cursor::new(Vec::new());
 
@@ -94,7 +98,7 @@ pub fn render(sandbox: &Sandbox, source: String) -> Result<Rendered, String> {
 		})
 		.collect::<Result<Vec<_>, String>>()?;
 
-	let more_pages = document.pages.len() - images.len();
+	let more_pages = document.pages().len() - images.len();
 
 	Ok(Rendered {
 		images,
