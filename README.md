@@ -42,6 +42,11 @@ In CLI usage, documents can read files (e.g., images) inside the project directo
 For the bot, only the latter is allowed. Resource exhaustion and DOS attacks are also somewhat addressed with timeouts and automatic restarting on crash.
 If you are paranoid, I suggest to set up adequate sandboxing on the host (which you should do for everything anyway) -- for example with Docker or systemd sandboxing.
 
+## Privacy Policy (for Discord)
+
+The bot does not log or store message content in any way -- message content is only read once to execute the contained Typst code.
+The Discord framework we use, poise/serenity, saves message IDs for a short time period (about an hour) in volatile storage, in order to react to edited or deleted messages. When the bot restarts these data are not retained.
+
 ## License
 
 AGPL. Use `?source` to get a link to the source from deployments of the bot.
