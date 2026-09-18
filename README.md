@@ -49,4 +49,4 @@ The Discord framework we use, poise/serenity, saves message IDs for a short time
 
 ## License
 
-AGPL. Use `?source` to get a link to the source from deployments of the bot.
+AGPL. Use `@typst-bot source` to get a link to the source from deployments of the bot.

@@ -201,8 +201,8 @@ fn render_help() -> String {
 Render Typst code as an image.
 
 Render command syntax:
-- `?render [pagesize=<page size>] [theme=<theme>] <code block> [...]`
-- Aliases: `?r ps={{p,a,d}} t={{d,l,t}} <code block> [...]`
+- `@typst-bot render [pagesize=<page size>] [theme=<theme>] <code block> [...]`
+- Aliases: `@typst-bot r ps={{p,a,d}} t={{d,l,t}} <code block> [...]`
 
 **Flags**
 - **`pagesize=`** (alias: **`ps=`**):
@@ -222,11 +222,11 @@ To remove the preamble entirely, use `pagesize=default theme=transparent`.
 
 **Examples**
 ```
-?render `hello, world!`
+@typst-bot render `hello, world!`
 
-?r ps=a t=l `Short syntax!`
+@typst-bot r ps=a t=l `Short syntax!`
 
-?render pagesize=default theme=light ``‍`
+@typst-bot render pagesize=default theme=light ``‍`
 = Heading!
 
 And some text.
@@ -234,7 +234,7 @@ And some text.
 #lorem(100)
 ``‍`
 
-?render `#myfunc()` I don't understand this code, can anyone help?
+@typst-bot render `#myfunc()` I don't understand this code, can anyone help?
 ```"
 	)
 }
@@ -390,16 +390,19 @@ async fn help(
 	// Avoid the useless parameter list from `poise::builtins::help`.
 	if command.as_deref() == Some("render") {
 		// We prefer `reply` but `poise::builtins::help` uses `say`, so be consistent.
-		ctx.say(format!("`?render`\n\n{}", render_help())).await?;
+		ctx
+			.say(format!("`@typst-bot render`\n\n{}", render_help()))
+			.await?;
 		return Ok(());
 	}
 
 	let config = poise::builtins::HelpConfiguration {
 		extra_text_at_bottom: "\
-Type ?help command for more info on a command.
+Type @typst-bot help command for more info on a command.
 You can edit your message to the bot and the bot will edit its response.
 Commands prefixed with / can be used as slash commands and prefix commands.
-Commands prefixed with ? can only be used as prefix commands.
+Commands prefixed with ? can only be used as prefix commands -- note that a mention of the bot must be used in place of the question mark due to Discord limitations.
+For ergonomics, you can probably autocomplete the mention with `@t<enter>` if the bot comes first in the list.
 The bot is written by mattf_. Feel free to reach out in the Typst Discord if you have any questions.
 ",
 		..Default::default()
@@ -417,14 +420,14 @@ async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
 
 /// Get the AST for the given code.
 ///
-/// Syntax: `?ast <code block> [...]`
+/// Syntax: `@typst-bot ast <code block> [...]`
 ///
 /// **Examples**
 ///
 /// ```
-/// ?ast `hello, world!`
+/// @typst-bot ast `hello, world!`
 ///
-/// ?ast ``‍`
+/// @typst-bot ast ``‍`
 /// = Heading!
 ///
 /// And some text.
@@ -432,7 +435,7 @@ async fn source(ctx: Context<'_>) -> Result<(), PoiseError> {
 /// #lorem(100)
 /// ``‍`
 ///
-/// ?ast `#((3): 4)` Interesting parse result here.
+/// @typst-bot ast `#((3): 4)` Interesting parse result here.
 /// ```
 #[poise::command(prefix_command, track_edits, broadcast_typing)]
 async fn ast(
@@ -575,7 +578,7 @@ fn interpolate<'a>(template: &str, mut params: impl Iterator<Item = &'a str>) ->
 
 /// Print the content of a tag by name.
 ///
-/// Syntax: `?tag <tag name> <parameters...>`
+/// Syntax: `@typst-bot tag <tag name> <parameters...>`
 ///
 /// If the tag has placeholders (set with `%s`),
 /// then you can fill them with the subsequent arguments.
@@ -608,7 +611,7 @@ async fn tag(
 
 /// Set the content of a tag (privileged).
 ///
-/// Syntax: `?set-tag <tag name> <tag text>`
+/// Syntax: `@typst-bot set-tag <tag name> <tag text>`
 ///
 /// Note that tags are local to the guild.
 #[poise::command(
@@ -652,7 +655,7 @@ async fn set_tag(
 
 /// Delete a tag (privileged).
 ///
-/// Syntax: `?delete-tag <tag name>`
+/// Syntax: `@typst-bot delete-tag <tag name>`
 #[poise::command(
 	prefix_command,
 	slash_command,
@@ -695,7 +698,7 @@ async fn delete_tag(
 
 /// List all tags.
 ///
-/// Syntax: `?tags [filter]`
+/// Syntax: `@typst-bot tags [filter]`
 ///
 /// If `filter` is included, it will only show tags whose names include the given text.
 #[poise::command(prefix_command, slash_command, rename = "tags", track_edits)]
@@ -751,7 +754,7 @@ async fn handle_error(
 	{
 		let name = &ctx.command().name;
 		let usage = format!(
-			"Use `?help {name}` for usage. Feel free to edit or delete your message and the bot will react.",
+			"Use `@typst-bot help {name}` for usage. Feel free to edit or delete your message and the bot will react.",
 		);
 		let response = input.map_or_else(
 			|| format!("**{error}**\n{usage}"),
@@ -785,7 +788,7 @@ pub async fn run() {
 
 	let edit_tracker_time = Duration::from_hours(1);
 
-	let intents = GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT;
+	let intents = GatewayIntents::non_privileged();
 	let framework = poise::Framework::builder()
 		.options(poise::FrameworkOptions {
 			prefix_options: poise::PrefixFrameworkOptions {
