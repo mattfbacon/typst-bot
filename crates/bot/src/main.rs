@@ -15,11 +15,12 @@
 #![forbid(unsafe_code)]
 
 mod bot;
+mod inline_math;
 mod worker;
 
 const SOURCE_URL: &str = "https://github.com/mattfbacon/typst-bot";
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-	bot::run().await;
+	tokio::join!(bot::run(), inline_math::run());
 }
