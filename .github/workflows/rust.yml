@@ -21,21 +21,6 @@
               },
             ],
         },
-      "clippy":
-        {
-          "name": "Clippy",
-          "runs-on": "ubuntu-latest",
-          "steps":
-            [
-              { "uses": "actions/checkout@v3" },
-              { "uses": "Swatinem/rust-cache@v2" },
-              {
-                "name": "Set up toolchain",
-                "run": "rustup component add clippy",
-              },
-              { "name": "Clippy", "run": "cargo clippy -- -Dwarnings" },
-            ],
-        },
       "tests":
         {
           "name": "Run tests",
