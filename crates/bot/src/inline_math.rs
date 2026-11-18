@@ -19,10 +19,13 @@ struct InlineMathHandler {
 }
 
 fn expressions(content: &str) -> impl Iterator<Item = &str> {
-	content
-		.split("$$")
+	let chunks = content.split("$$").collect::<Vec<_>>();
+	let complete_expressions = chunks.len().saturating_sub(1) / 2;
+	chunks
+		.into_iter()
 		.skip(1)
 		.step_by(2)
+		.take(complete_expressions)
 }
 
 #[serenity::async_trait]
@@ -33,9 +36,11 @@ impl EventHandler for InlineMathHandler {
 		}
 
 		for expression in expressions(&message.content).filter(|expression| !expression.trim().is_empty()) {
-			let mut source = String::with_capacity(PREAMBLE.len() + expression.len());
+			let mut source = String::with_capacity(PREAMBLE.len() + expression.len() + 2);
 			source.push_str(PREAMBLE);
+			source.push('$');
 			source.push_str(expression);
+			source.push('$');
 
 			let (progress_sender, _progress_receiver) = mpsc::channel(1);
 			let rendered = self.worker.lock().await.render(source, progress_sender).await;
@@ -95,5 +100,6 @@ mod tests {
 	#[test]
 	fn ignores_unclosed_delimiters() {
 		assert_eq!(expressions("$$1+1$$ and $$unfinished").collect::<Vec<_>>(), ["1+1"]);
+		assert_eq!(expressions("$$unfinished").count(), 0);
 	}
 }
