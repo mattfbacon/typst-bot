@@ -7,7 +7,7 @@ name: Docker
 
 on:
   schedule:
-    - cron: '18 20 * * *'
+    - cron: '43 13 * * *'
   push:
     branches: [ "main" ]
     # Publish semver tags as releases.
@@ -45,6 +45,11 @@ jobs:
         with:
           cosign-release: 'v2.2.4'
 
+      # Set up QEMU for cross-platform emulation (arm64 on an amd64 runner)
+      # https://github.com/docker/setup-qemu-action
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       # Set up BuildKit Docker container builder to be able to build
       # multi-platform images and export cache
       # https://github.com/docker/setup-buildx-action
@@ -76,12 +81,12 @@ jobs:
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
 
       # Sign the resulting Docker image digest except on PRs.
       # This will only write to the public Rekor transparency log when the Docker
