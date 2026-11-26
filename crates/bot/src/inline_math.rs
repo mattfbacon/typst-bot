@@ -18,14 +18,8 @@ struct InlineMathHandler {
 	worker: Mutex<Worker>,
 }
 
-fn expressions(content: &str) -> impl Iterator<Item = &str> {
-	let chunks = content.split("$$").collect::<Vec<_>>();
-	let complete_expressions = chunks.len().saturating_sub(1) / 2;
-	chunks
-		.into_iter()
-		.skip(1)
-		.step_by(2)
-		.take(complete_expressions)
+fn source_for_message(content: &str) -> Option<String> {
+	content.contains('$').then(|| format!("{PREAMBLE}{content}"))
 }
 
 #[serenity::async_trait]
@@ -35,13 +29,7 @@ impl EventHandler for InlineMathHandler {
 			return;
 		}
 
-		for expression in expressions(&message.content).filter(|expression| !expression.trim().is_empty()) {
-			let mut source = String::with_capacity(PREAMBLE.len() + expression.len() + 2);
-			source.push_str(PREAMBLE);
-			source.push('$');
-			source.push_str(expression);
-			source.push('$');
-
+		if let Some(source) = source_for_message(&message.content) {
 			let (progress_sender, _progress_receiver) = mpsc::channel(1);
 			let rendered = self.worker.lock().await.render(source, progress_sender).await;
 			match rendered {
@@ -54,8 +42,23 @@ impl EventHandler for InlineMathHandler {
 						tracing::error!(?error, "Failed to send inline math render");
 					}
 				}
-				Ok(_) => {}
-				Err(error) => tracing::warn!(?error, "Failed to render inline math"),
+				Ok(_) => {
+					let reply = CreateMessage::new()
+						.reference_message(&message)
+						.content("The message rendered without producing any pages.");
+					if let Err(error) = message.channel_id.send_message(&ctx.http, reply).await {
+						tracing::error!(?error, "Failed to send empty inline math render response");
+					}
+				}
+				Err(error) => {
+					tracing::warn!(?error, "Failed to render inline math");
+					let reply = CreateMessage::new()
+						.reference_message(&message)
+						.content(format!("Failed to render message: {error}"));
+					if let Err(error) = message.channel_id.send_message(&ctx.http, reply).await {
+						tracing::error!(?error, "Failed to send inline math render error");
+					}
+				}
 			}
 		}
 	}
@@ -87,19 +90,24 @@ pub async fn run() {
 
 #[cfg(test)]
 mod tests {
-	use super::expressions;
+	use super::{source_for_message, PREAMBLE};
 
 	#[test]
-	fn extracts_all_dollar_delimited_expressions() {
+	fn renders_the_entire_message_when_it_contains_a_dollar_sign() {
+		let message = "Text before $x$ and after.";
 		assert_eq!(
-			expressions("Test $$1+1=3$$ and $$2+3=5$$").collect::<Vec<_>>(),
-			["1+1=3", "2+3=5"],
+			source_for_message(message).as_deref(),
+			Some(format!("{PREAMBLE}{message}").as_str()),
 		);
 	}
 
 	#[test]
-	fn ignores_unclosed_delimiters() {
-		assert_eq!(expressions("$$1+1$$ and $$unfinished").collect::<Vec<_>>(), ["1+1"]);
-		assert_eq!(expressions("$$unfinished").count(), 0);
+	fn does_not_render_messages_without_a_dollar_sign() {
+		assert_eq!(source_for_message("No math here"), None);
+	}
+
+	#[test]
+	fn renders_messages_with_single_or_unpaired_dollar_signs() {
+		assert_eq!(source_for_message("Price: $5").as_deref(), Some(format!("{PREAMBLE}Price: $5").as_str()));
 	}
 }

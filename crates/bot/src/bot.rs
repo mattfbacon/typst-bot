@@ -6,7 +6,6 @@ use std::time::Duration;
 use poise::serenity_prelude::GatewayIntents;
 use poise::{async_trait, CreateReply};
 use protocol::VersionResponse;
-use rusqlite::{named_params, Connection, OpenFlags};
 use serenity::builder::{CreateAllowedMentions, CreateAttachment};
 use tokio::join;
 use tokio::sync::{mpsc, Mutex};
@@ -145,7 +144,6 @@ impl Preamble {
 
 struct Data {
 	pool: Mutex<Worker>,
-	database: std::sync::Mutex<Connection>,
 }
 
 type PoiseError = Box<dyn std::error::Error + Send + Sync + 'static>;
