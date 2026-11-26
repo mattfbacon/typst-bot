@@ -3274,7 +3274,6 @@ dependencies = [
  "flate2",
  "poise",
  "protocol",
- "rusqlite",
  "serde",
  "serenity",
  "strip-ansi-escapes",

@@ -12,15 +12,12 @@ services:
             DISCORD_TOKEN_FILE: /run/secrets/discord_token
         secrets:
             - discord_token
-        # The `/bot/sqlite` and `/bot/cache` directories are mapped to volumes.
+        # The package cache is stored in a named volume.
         volumes:
-            - sqlite:/bot/sqlite
             - cache:/bot/cache
 
-# SQLite database for tags and package cache are stored in named volumes managed by Docker. As long
-# as the volumes are kept in between container rebuilds, they won't need to be recreated.
+# The package cache is stored in a named volume managed by Docker.
 volumes:
-    sqlite:
     cache:
 
 secrets:
